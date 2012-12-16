@@ -17,24 +17,6 @@
 #include "plc_command_def.h"
 #include "plc_prase.h"
 
-
-//--------------------------地址编号-------数量-----------
-#define  IO_INPUT_BASE          0
-#define  IO_INPUT_COUNT                     16
-#define  IO_OUTPUT_BASE         256  //0x00,0x01
-#define  IO_OUTPUT_COUNT                    16
-#define  AUXI_RELAY_BASE        512  //0x00,0x02
-#define  AUXI_RELAY_COUNT                   200
-//
-#define  TIMING100MS_EVENT_BASE  2048  //0x08,0x00
-#define  TIMING100MS_EVENT_COUNT            40
-
-#define  TIMING1S_EVENT_BASE     3072  //0x0C,0x00
-#define  TIMING1S_EVENT_COUNT               40
-
-#define  COUNTER_EVENT_BASE      4096  //0x10,0x00
-#define  COUNTER_EVENT_COUNT                40
-
 //100ms计时器的控制数据结构
 typedef struct _TIM100MS_ARRAYS_T
 {
@@ -87,12 +69,14 @@ unsigned int  input_num;
 unsigned char inputs_new[BITS_TO_BS(IO_INPUT_COUNT)];
 unsigned char inputs_last[BITS_TO_BS(IO_INPUT_COUNT)];
 //输出继电器
-unsigned int  output_num;
 unsigned char output_last[BITS_TO_BS(IO_OUTPUT_COUNT)];
 unsigned char output_new[BITS_TO_BS(IO_OUTPUT_COUNT)];
+//modbus专用寄存器
+unsigned char modbus_bits[BITS_TO_BS(IO_OUTPUT_COUNT)];
+unsigned char modbus_bits_last[BITS_TO_BS(IO_OUTPUT_COUNT)];
 //辅助继电器
-unsigned char xdata auxi_relays[BITS_TO_BS(AUXI_RELAY_COUNT)];
-unsigned char xdata auxi_relays_last[BITS_TO_BS(AUXI_RELAY_COUNT)];
+unsigned char auxi_relays[BITS_TO_BS(AUXI_RELAY_COUNT)];
+unsigned char auxi_relays_last[BITS_TO_BS(AUXI_RELAY_COUNT)];
 //定时器定义，自动对内部的时钟脉冲进行计数
 volatile unsigned int  time100ms_come_flag;
 volatile unsigned int  time1s_come_flag;
@@ -141,6 +125,26 @@ void plc_timing_tick_process(void)
 	}
 }
 
+bit      plc_write_busy = 0;
+
+unsigned char plc_write_delay(void)
+{
+   unsigned char ret  = 0;
+   sys_lock();
+   ret = plc_write_busy;
+   sys_unlock();
+   return ret;
+}
+
+void plc_set_busy(unsigned char busy)
+{
+   sys_lock();
+   plc_write_busy = busy;
+   sys_unlock();
+}
+
+
+
 void timing_cell_prcess(void);
 
 
@@ -154,8 +158,8 @@ void PlcInit(void)
 	bit_acc = 0;
 	memset(bit_stack,0,sizeof(bit_stack));
 	bit_stack_sp = 0;
-	input_num = io_in_get_bits(0,inputs_new,IO_INPUT_COUNT);
-	output_num = io_out_get_bits(0,output_last,IO_OUTPUT_COUNT);
+	io_in_get_bits(0,inputs_new,IO_INPUT_COUNT);
+	io_out_get_bits(0,output_last,IO_OUTPUT_COUNT);
 	memcpy(inputs_last,inputs_new,sizeof(inputs_new));
 	plc_command_index = 0;
     //memset(timing100ms,0,sizeof(timing100ms));
@@ -219,11 +223,9 @@ static unsigned char get_bitval(unsigned int index)
 		bitval = BIT_IS_SET(auxi_relays,index);
 	} else if(index >= TIMING100MS_EVENT_BASE && index < (TIMING100MS_EVENT_BASE+TIMING100MS_EVENT_COUNT)) {
 		index -= TIMING100MS_EVENT_BASE;
-		timing_cell_prcess();
 		bitval = BIT_IS_SET(tim100ms_arrys.event_bits,index);
 	} else if(index >= TIMING1S_EVENT_BASE && index < (TIMING1S_EVENT_BASE + TIMING1S_EVENT_COUNT)) {
 		index -= TIMING1S_EVENT_BASE;
-		timing_cell_prcess();
 		bitval = BIT_IS_SET(tim1s_arrys.event_bits,index);
 	} else if(index >= COUNTER_EVENT_BASE && index < (COUNTER_EVENT_BASE+COUNTER_EVENT_COUNT)) {
 	    index -= COUNTER_EVENT_BASE;
@@ -261,7 +263,8 @@ static unsigned char get_last_bitval(unsigned int index)
 	}
 	return bitval;
 }
-static void set_bitval(unsigned int index,unsigned char bitval)
+
+void set_bitval(unsigned int index,unsigned char bitval)
 {
 	if(index >= IO_INPUT_BASE && index < (IO_INPUT_BASE+IO_INPUT_COUNT)) {
 		//输入值不能修改
@@ -296,11 +299,11 @@ void timing_cell_prcess(void)
 	counter = time100ms_come_flag;
 	time100ms_come_flag = 0;
 	sys_unlock();
-	if(counter) {
+    {
 	    TIM100MS_ARRAYS_T * ptiming = &tim100ms_arrys;
 	    for(i=0;i<GET_ARRRYS_NUM(tim100ms_arrys.counter);i++) {
 		    if(BIT_IS_SET(ptiming->enable_bits,i)) { //如果允许计时
-			    if(!BIT_IS_SET(ptiming->event_bits,i)) {  //如果时间事件未发生
+			    if(counter > 0 && !BIT_IS_SET(ptiming->event_bits,i)) {  //如果时间事件未发生
 				    if(ptiming->counter[i] > counter) {
 					    ptiming->counter[i] -= counter;
 					} else {
@@ -327,12 +330,11 @@ void timing_cell_prcess(void)
 	counter = time1s_come_flag;
 	time1s_come_flag = 0;
 	sys_unlock();
-	if(counter) {
+	{
 	    TIM1S_ARRAYS_T * ptiming = &tim1s_arrys;
-		if(THIS_INFO)printf("1s come\r\n");
 	    for(i=0;i<GET_ARRRYS_NUM(tim1s_arrys.counter);i++) {
 		    if(BIT_IS_SET(ptiming->enable_bits,i)) { //如果允许计时
-			    if(!BIT_IS_SET(ptiming->event_bits,i)) {  //如果时间事件未发生
+			    if(counter > 0 && !BIT_IS_SET(ptiming->event_bits,i)) {  //如果时间事件未发生
 				    if(ptiming->counter[i] > counter) {
 					    ptiming->counter[i] -= counter;
 					} else {
@@ -340,7 +342,7 @@ void timing_cell_prcess(void)
 					}
 					if(ptiming->counter[i] == 0) {
 					    SET_BIT(ptiming->event_bits,i,1);
-						if(THIS_INFO)printf("timing1s event come:%d\r\n",i);
+						if(THIS_INFO)printf("timing100ms event come:%d\r\n",i);
 					}
 				}
 			} else {
@@ -350,6 +352,7 @@ void timing_cell_prcess(void)
 				    //不保持
 					ptiming->counter[i] = 0;
 					SET_BIT(ptiming->event_bits,i,0);
+
 				}
 			}
 	    }
@@ -400,8 +403,6 @@ static void timing_cell_stop(unsigned int index)
 		if(BIT_IS_SET(ptiming->enable_bits,index)) {
 		    if(THIS_INFO)printf("stop timeimg 100ms :%d\r\n",index);
 		    SET_BIT(ptiming->enable_bits,  index,0);
-		    SET_BIT(ptiming->holding_bits, index,0);
-		    SET_BIT(ptiming->event_bits,   index,0);
 		}
 	} else if(index >= TIMING1S_EVENT_BASE && index < (TIMING1S_EVENT_BASE+TIMING1S_EVENT_COUNT)) {
 	    TIM1S_ARRAYS_T * ptiming = &tim1s_arrys;
@@ -409,8 +410,6 @@ static void timing_cell_stop(unsigned int index)
 		if(BIT_IS_SET(ptiming->enable_bits,index)) {
 		    if(THIS_INFO)printf("stop timeimg 1s :%d\r\n",index);
 		    SET_BIT(ptiming->enable_bits,  index,0);
-		    SET_BIT(ptiming->holding_bits, index,0);
-		    SET_BIT(ptiming->event_bits,   index,0);
 		}
 	} else {
 	    if(THIS_ERROR)printf("timing stop error:%d\r\n",index);
@@ -661,9 +660,9 @@ void PlcProcess(void)
 	}
 	//输入处理,读取IO口的输入
 	io_in_get_bits(0,inputs_new,IO_INPUT_COUNT);
-
-	//inputs_new[0] = 0xFF;
-
+	//处理通信程序
+	//
+	plc_set_busy(1);
 	plc_command_index = 0;
  next_plc_command:
 	read_next_plc_code();
@@ -743,5 +742,19 @@ void PlcProcess(void)
 	//定时器处理
 	timing_cell_prcess();
 	//计数器处理
+	plc_set_busy(0);
 }
+
+
+
+
+
+
+/*****************************************************************
+ * 通信程序在PLC中，可以任意时间读，
+ * 但写指令只能在循环外面执行，应为如果再循环中间修改寄存器值的话，寄存器值变得不可控
+ * 这种不可控一般体现在用户上，如果用户知道，可以提高性能
+ * 但用户不知道，就变得难以理解
+ * 为了降低难度，写指令放到循环完毕之后才开始做
+ */
 

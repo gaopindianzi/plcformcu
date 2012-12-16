@@ -24,6 +24,7 @@ unsigned char rx_index = 0;
 
 
 
+
 extern unsigned int CRC16(unsigned char *Array,unsigned int Len);
 
 unsigned char get_lrc_sum(unsigned char *buffer,unsigned char length)

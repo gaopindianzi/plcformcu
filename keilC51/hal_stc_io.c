@@ -3,6 +3,7 @@
 #include "hal_stc_io.h"
 #include "modbus_rtu.h"
 #include "plc_prase.h"
+#include "serial_comm_packeter.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -62,8 +63,9 @@ void sysclk_init(void)
 void uart1_port_initial(void)
 {
     SCON = 0x50;
-	BRT  = 0xBF; //20MHz晶振
-	AUXR = 0x15;
+	BRT  = 0xBF; //20MHz晶振、9600
+	//BRT  = 0xFB; //20MHz晶振、125000
+	AUXR = 0x15;  //1T模式,允许BRT发生,UART1使用BRT
 	ES = 1;
 }
 
@@ -73,7 +75,9 @@ void send_uart1(unsigned char ch)
   ES = 0;
   TI = 0;
   SBUF = ch;
+#ifndef DEBUG_ON
   while(TI == 0);
+#endif
   TI = 0;
   ES = 1;
 }
@@ -86,7 +90,9 @@ void uart1_initerrupt_receive(void) interrupt 4
   {
       RI = 0;
 	  k = SBUF;
-	  UartReceivetoModbusRtu(k);
+      //send_uart1(k);
+	  //UartReceivetoModbusRtu(k);
+	  prase_in_stream(k);
   }
   else 
   {

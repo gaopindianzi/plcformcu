@@ -139,7 +139,7 @@ struct modbus_preset_multiple_register_ack_type
 
 extern void UartReceivetoModbusRtu(unsigned char ch);
 extern void UartReceivetoModbusRtuTimeTick(void);
-
+extern unsigned int CRC16(unsigned char *Array,unsigned int Len);
 
 #endif
 

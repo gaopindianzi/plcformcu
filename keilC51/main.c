@@ -7,6 +7,7 @@
 #include "modbus_rtu.h"
 #include "compiler.h"
 #include "plc_command_def.h"
+#include "serial_comm_packeter.h"
 #include <stdio.h>
 
 
@@ -40,46 +41,20 @@ sbit P13 = P1^3;
 #define  COUNTER_EVENT_COUNT                40
 */
 
-/*
-Ê²Ã´ÎÊÌâ£¿
 code unsigned char plc_test_buffer[128] = 
 {
-    PLC_LDI,   0x00,0x08,
-	PLC_OUTT,  0x00,0x08,50,0x00,
-
-	PLC_LDF,   0x00,0x08,
-	PLC_SET,   0x00,0x02,
-
-	PLC_LD,    0x00,0x02,
-	PLC_OUT,   0x00,0x01,
-
 	PLC_END,
 };
 
-*/
-
-
-code unsigned char plc_test_buffer[128] = 
+code unsigned char test_strasm_in[] = 
 {
-    PLC_LD,    0x00,0x00,
-	PLC_OUTT,  0x00,0x08,50,0x00,
-
-	PLC_LDP,    0x00,0x08,
-	PLC_SET,   0x00,0x01,
-
-	PLC_LD,    0x01,0x00,
-	PLC_RST,   0x00,0x01,
-
-
-	PLC_END,
+  '0','s','S','a',0x22,'E','E','S','S',0x01,0x02,0x03,'C','s','C','c','E','E','E','s','S','E'
 };
-
-
-
 
 
 void main(void)
 {
+  unsigned int index = 0;
   unsigned long start;
   io_init();
   sysclk_init();
@@ -88,7 +63,7 @@ void main(void)
   start = get_sys_clock();
   sys_info.modbus_addr = 0x88;
   sys_unlock();
-#if 1
+#ifndef DEBUG_ON
   delayms(1000);
   uart1_send_string("\r\n");
   {
@@ -114,7 +89,12 @@ void main(void)
       //uart1_send_string("hahaha..");
     //}
 	//
-	PlcProcess();
+	//PlcProcess();
+	prase_in_stream(test_strasm_in[index++]);
+	if(index >= sizeof(test_strasm_in)) {
+        index = 0;
+	}
+	//SerialRxCheckTimeoutTick();
   }
 }
 
