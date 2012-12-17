@@ -102,14 +102,10 @@ void main(void)
 	//SerialRxCheckTimeoutTick();
 
 #ifndef DEBUG_ON
-     if(serial_stream_rx_finished()) {
-        unsigned int len = get_stream_len();
-        stream_packet_send(get_stream_ptr(),len);
-        serial_clear_stream();
-	    io_out_get_bits(0,&reg,8);
-        reg ^= 0xFF;
-	    io_out_set_bits(0,&reg,8);
-     }
+    if(rx_pack.finished) {
+        rx_pack.finished = 0;
+        io_out_convert_bits(0,&reg,8);
+    }
 #endif
 
   }

@@ -13,13 +13,16 @@
 #include "plc_prase.h"
 #include "serial_comm_packeter.h"
 #include "modbus_rtu.h"
+#include "modbus_ascii.h"
 
 
-unsigned char stream_in_buffer[PACK_MAX_RX_SIZE];
-unsigned char stream_rx_index;
-unsigned char last_byte_val;
-bit           one_pack_is_come_flag = 0;
-bit           rx_started = 0;
+#define STREAM_IDLE   0
+#define STREAM_NORMAL 1
+#define STREAM_IN_ESC 2
+
+DATA_RX_PACKET_T rx_pack;
+DATA_TX_PACKET_T tx_pack;
+
 
 #define  STREAM_START        0x0F
 #define  STREAM_END          0xF0
@@ -28,155 +31,104 @@ bit           rx_started = 0;
 #define  STREAM_ES_E         0x05   //转义字符 'E'
 //除了以上特殊字符外，其他都是原始字符
 
-void  set_pack_is_finished(void);
 
 
-unsigned long serial_last_rx_time;
-
-void SerialRxCheckTimeoutTick(void)
-{
-  sys_lock();
-  if(stream_rx_index > 0 && ((get_sys_clock() - serial_last_rx_time) >= TICK_SECOND/10)) {  //接收100ms超时
-      serial_last_rx_time = get_sys_clock();
-	  stream_rx_index = 0;
-  }
-  sys_unlock();
-}
-
-
-/***************************************************
- * 解析输入原始数据流
- * 根据以太网发下来的数据，然后带软件包同步的数据包
- * 解析成原始的数据，最后两位是CRC校验，如果校验成功,
- * 则次包是正确的，等待上层软降处理
- */
-void prase_in_stream(unsigned char ch)
-{
-    if(serial_stream_rx_finished()) {
-	    goto exit; //丢弃
-	}
-	if(ch == STREAM_START) {
-	   stream_rx_index = 0; 
-	   rx_started = 1;
-	   goto exit;
-	} else {
-	   if(!rx_started) {
-	       goto exit; //尚未开始
-	   }
-	}
-    switch(ch)
-	{
-	case STREAM_START:
-	    break;
-	case STREAM_END:
-	    if(rx_started && stream_rx_index >= 3) { //包括CRC在内的数据必须大于3
-		    unsigned int crc;
-			struct modbus_crc_type * pcrc = (struct modbus_crc_type *)&stream_in_buffer[stream_rx_index - 2];
-			crc = pcrc->crc_hi;
-			crc <<= 8;
-			crc |= pcrc->crc_lo;
-			if(1) { //crc == CRC16(stream_in_buffer,stream_rx_index)) {
-			    stream_rx_index -= 2; //去掉CRC的长度
-			    set_pack_is_finished();
-			} else {
-			    stream_rx_index = 0;
-				rx_started = 0;
-			}
-		} else {
-		    stream_rx_index = 0;
-			rx_started = 0;
-		}
-		break;
-	case STREAM_ESCAPE:
-		break;
-	case STREAM_ES_S:
-	    if(last_byte_val == STREAM_ESCAPE) {
-	        if(stream_rx_index < sizeof(stream_in_buffer)) {
-	            stream_in_buffer[stream_rx_index++] = STREAM_START;
-	        }
-		} else {
-		    //无效的转义字符，数据流无效
-			stream_rx_index = 0;
-			rx_started = 0;
-		}
-		break;
-	case STREAM_ES_E:
-	    if(last_byte_val == STREAM_ESCAPE) {
-	        if(stream_rx_index < sizeof(stream_in_buffer)) {
-	            stream_in_buffer[stream_rx_index++] = STREAM_END;
-	        }
-		} else {
-		    //无效的转义字符，数据流无效
-			stream_rx_index = 0;
-			rx_started = 0;
-		}
-		break;
-	default:
-	  if(stream_rx_index < sizeof(stream_in_buffer)) {
-	      stream_in_buffer[stream_rx_index++] = ch;
-	  }
-	}
-exit:
-	last_byte_val = ch;
-}
+ void pack_prase_in(unsigned char ch)
+ {
+   if(rx_pack.finished) {
+     return ;
+   }
+   switch(rx_pack.state)
+   {
+   case STREAM_IDLE:
+     if(ch == STREAM_START) {
+       rx_pack.state = STREAM_NORMAL;
+       rx_pack.index = 0;
+     }
+     break;
+   case STREAM_NORMAL:
+     if(ch == STREAM_ESCAPE) {
+       rx_pack.state = STREAM_IN_ESC;
+     } else if(ch == STREAM_START) {
+       rx_pack.state = STREAM_IDLE;
+     } else if(ch == STREAM_END) {
+       if(rx_pack.index >= 3) {
+         unsigned int crc = CRC16(rx_pack.buffer,rx_pack.index-2);
+         if(crc == BYTES_TO_WORD(&rx_pack.buffer[rx_pack.index-2])) {
+			 rx_pack.index -= 2;
+             rx_pack.finished = 1;
+         }
+       }
+       rx_pack.state = STREAM_IDLE;
+     } else {
+       rx_pack.buffer[rx_pack.index++] = ch;
+     }
+     break;
+   case STREAM_IN_ESC:
+     if(ch == STREAM_ESCAPE) {
+       rx_pack.buffer[rx_pack.index++] = STREAM_ESCAPE;
+       rx_pack.state = STREAM_NORMAL;
+     } else if(ch == STREAM_ES_S) {
+       rx_pack.buffer[rx_pack.index++] = STREAM_START;
+       rx_pack.state = STREAM_NORMAL;
+     } else if(ch == STREAM_ES_E) {
+       rx_pack.buffer[rx_pack.index++] = STREAM_END;
+       rx_pack.state = STREAM_NORMAL;
+     } else {
+       rx_pack.state = STREAM_IDLE;
+     }
+     break;
+   default:
+     rx_pack.state = STREAM_IDLE;
+     break;
+   }
+   //溢出判断
+   if(rx_pack.index >= sizeof(rx_pack.buffer)) {
+     rx_pack.state = STREAM_IDLE;
+   }
+ }
 
 
-unsigned int get_stream_len(void)
-{
-    return stream_rx_index;
-}
+ unsigned int prase_in_buffer(unsigned char * src,unsigned int len)
+ {
+	 unsigned int i = 0;
+	 if(len == 0) {
+		 return 0;
+	 } else if(tx_pack.finished) {
+		 return 0;
+	 } else {
+		 unsigned int crc = CRC16(src,len);
+		 tx_pack.index = 0;
+		 tx_pack.buffer[tx_pack.index++] = STREAM_START;
+		 while(len--) {
+			 unsigned char reg = src[i++];
+			 if(tx_pack.index >= (sizeof(tx_pack.buffer) - 4)) {
+				 //溢出判断,2字节CRC，一个结束位,一个转义字符
+				 tx_pack.index = 0;
+				 break;
+			 }
+			 if(reg == STREAM_START) {
+				 tx_pack.buffer[tx_pack.index++] = STREAM_ESCAPE;
+				 tx_pack.buffer[tx_pack.index++] = STREAM_ES_S;
+		     } else if(reg == STREAM_ESCAPE) {
+				 tx_pack.buffer[tx_pack.index++] = STREAM_ESCAPE;
+				 tx_pack.buffer[tx_pack.index++] = STREAM_ESCAPE;
+			 } else if(reg == STREAM_END) {
+				 tx_pack.buffer[tx_pack.index++] = STREAM_ESCAPE;
+				 tx_pack.buffer[tx_pack.index++] = STREAM_ES_E;
+			 } else {
+				 tx_pack.buffer[tx_pack.index++] = reg;
+			 }
+		 }
+		 if(tx_pack.index > 0) {
+		     tx_pack.buffer[tx_pack.index++] = crc & 0xFF;
+		     tx_pack.buffer[tx_pack.index++] = crc >> 8;
+		     tx_pack.buffer[tx_pack.index++] = STREAM_END;
+		     tx_pack.finished = 1;
+		 }
+	 }
+	 return tx_pack.index;
+ }
 
-extern unsigned char * get_stream_ptr(void)
-{
-   return stream_in_buffer;
-}
 
-void stream_packet_send(unsigned char * buffer,unsigned int len)
-{
-    unsigned int i;
-    if(len == 0) {
-        return ;
-    }
-    send_uart1(STREAM_START);
-    for(i=0;i<len;i++) {
-	    unsigned char ch = buffer[i];
-        if(ch == STREAM_START) {
-		    send_uart1(STREAM_ESCAPE);
-            send_uart1(STREAM_ES_S);
-        } else if(ch == STREAM_END) {
-		    send_uart1(STREAM_ESCAPE);
-            send_uart1(STREAM_ES_E);
-        } else {
-            send_uart1(ch);
-        }
-    }
-    send_uart1(0);
-    send_uart1(0);
-    send_uart1(STREAM_END);
-}
-
-
-unsigned char serial_stream_rx_finished(void)
-{
-    unsigned char ret;
-	sys_lock();
-    ret = one_pack_is_come_flag;
-	sys_unlock();
-	return ret;
-}
-
-void serial_clear_stream(void)
-{
-	sys_lock();
-    one_pack_is_come_flag = 0;
-    stream_rx_index = 0;
-	sys_unlock();
-}
-
-void  set_pack_is_finished(void)
-{
-	sys_lock();
-    one_pack_is_come_flag = 1;
-	sys_unlock();
-}
 

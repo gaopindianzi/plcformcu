@@ -1,16 +1,31 @@
 #ifndef __SERIAL_COMM_PACKER_H__
 #define __SERIAL_COMM_PACKER_H__
 
-#define  PACK_MAX_RX_SIZE   64
-extern unsigned char stream_in_buffer[PACK_MAX_RX_SIZE];
+#define  PACK_MAX_RX_SIZE   32
 
 
-extern void prase_in_stream(unsigned char ch);
-extern unsigned char serial_stream_rx_finished(void);
-extern void serial_clear_stream(void);
-extern void SerialRxCheckTimeoutTick(void); //系统主循环调用
-extern void stream_packet_send(unsigned char * buffer,unsigned int len);
-extern unsigned int get_stream_len(void);
-extern unsigned char * get_stream_ptr(void);
+typedef struct _DATA_RX_PACKET_T
+{
+  unsigned char buffer[PACK_MAX_RX_SIZE];
+  unsigned char index;
+  unsigned char state : 4;
+  unsigned char finished : 1;
+} DATA_RX_PACKET_T;
+
+
+typedef struct _DATA_TX_PACKET_T
+{
+  unsigned char buffer[PACK_MAX_RX_SIZE*2+2];
+  unsigned char index;
+  unsigned char finished : 1;
+} DATA_TX_PACKET_T;
+
+
+extern DATA_RX_PACKET_T rx_pack;
+extern DATA_TX_PACKET_T tx_pack;
+
+extern unsigned int prase_in_buffer(unsigned char * src,unsigned int len);
+extern void pack_prase_in(unsigned char ch);
+
 
 #endif

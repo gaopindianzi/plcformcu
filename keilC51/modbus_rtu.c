@@ -14,11 +14,12 @@
 #include "sys_info.h"
 #include "modbus_rtu.h"
 #include "modbus_ascii.h"
+#include "compiler.h"
 
 
 unsigned int CRC16(unsigned char *Array,unsigned int Len)
 {
-	unsigned int  IX,IY,CRC;
+	WORD  IX,IY,CRC;
 	CRC=0xFFFF;//set all 1
 	if (Len<=0) {
 		CRC = 0;
@@ -26,7 +27,7 @@ unsigned int CRC16(unsigned char *Array,unsigned int Len)
 		Len--;
 		for (IX=0;IX<=Len;IX++)
 		{
-			CRC=CRC^(unsigned int)(Array[IX]);
+			CRC=CRC^(WORD)(Array[IX]);
 			for(IY=0;IY<=7;IY++) {
 				if ((CRC&1)!=0) {
 					CRC=(CRC>>1)^0xA001;

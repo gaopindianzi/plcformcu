@@ -100,7 +100,7 @@ void uart1_initerrupt_receive(void) interrupt 4
 	  k = SBUF;
       //send_uart1(k);
 	  //UartReceivetoModbusRtu(k);
-	  prase_in_stream(k);
+	  pack_prase_in(k);
   }
   else 
   {
