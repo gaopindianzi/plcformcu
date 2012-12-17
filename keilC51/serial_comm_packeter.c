@@ -18,14 +18,14 @@
 unsigned char stream_in_buffer[PACK_MAX_RX_SIZE];
 unsigned char stream_rx_index;
 unsigned char last_byte_val;
-bit           one_pack_is_come_flag;
-bit           rx_started;
+bit           one_pack_is_come_flag = 0;
+bit           rx_started = 0;
 
-#define  STREAM_START        'S'
-#define  STREAM_END          'E'
-#define  STREAM_ESCAPE       'C'
-#define  STREAM_ES_S         's'   //转义字符 'S'
-#define  STREAM_ES_E         'e'   //转义字符 'E'
+#define  STREAM_START        0x0F
+#define  STREAM_END          0xF0
+#define  STREAM_ESCAPE       0x55
+#define  STREAM_ES_S         0x50   //转义字符 'S'
+#define  STREAM_ES_E         0x05   //转义字符 'E'
 //除了以上特殊字符外，其他都是原始字符
 
 void  set_pack_is_finished(void);
@@ -53,15 +53,15 @@ void SerialRxCheckTimeoutTick(void)
 void prase_in_stream(unsigned char ch)
 {
     if(serial_stream_rx_finished()) {
-	    return ; //丢弃
+	    goto exit; //丢弃
 	}
 	if(ch == STREAM_START) {
 	   stream_rx_index = 0; 
 	   rx_started = 1;
-	   return ;
+	   goto exit;
 	} else {
 	   if(!rx_started) {
-	       return ; //尚未开始
+	       goto exit; //尚未开始
 	   }
 	}
     switch(ch)
@@ -116,7 +116,43 @@ void prase_in_stream(unsigned char ch)
 	      stream_in_buffer[stream_rx_index++] = ch;
 	  }
 	}
+exit:
 	last_byte_val = ch;
+}
+
+
+unsigned int get_stream_len(void)
+{
+    return stream_rx_index;
+}
+
+extern unsigned char * get_stream_ptr(void)
+{
+   return stream_in_buffer;
+}
+
+void stream_packet_send(unsigned char * buffer,unsigned int len)
+{
+    unsigned int i;
+    if(len == 0) {
+        return ;
+    }
+    send_uart1(STREAM_START);
+    for(i=0;i<len;i++) {
+	    unsigned char ch = buffer[i];
+        if(ch == STREAM_START) {
+		    send_uart1(STREAM_ESCAPE);
+            send_uart1(STREAM_ES_S);
+        } else if(ch == STREAM_END) {
+		    send_uart1(STREAM_ESCAPE);
+            send_uart1(STREAM_ES_E);
+        } else {
+            send_uart1(ch);
+        }
+    }
+    send_uart1(0);
+    send_uart1(0);
+    send_uart1(STREAM_END);
 }
 
 
@@ -133,6 +169,7 @@ void serial_clear_stream(void)
 {
 	sys_lock();
     one_pack_is_come_flag = 0;
+    stream_rx_index = 0;
 	sys_unlock();
 }
 

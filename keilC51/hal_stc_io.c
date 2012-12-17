@@ -39,7 +39,6 @@ void timer1_interrupt() interrupt 3 using 1
    TH1 = TMR1_RELOAD_H;
    TL1 = TMR1_RELOAD_L;
    system_current_time_tick++;
-   //plc_timing_tick_process();
    UartReceivetoModbusRtuTimeTick();
 }
 
@@ -65,8 +64,17 @@ void uart1_port_initial(void)
     SCON = 0x50;
 	BRT  = 0xBF; //20MHz晶振、9600
 	//BRT  = 0xFB; //20MHz晶振、125000
-	AUXR = 0x15;  //1T模式,允许BRT发生,UART1使用BRT
+	AUXR |= 0x15;  //1T模式,允许BRT发生,UART1使用BRT
 	ES = 1;
+	//
+#if 0 //if uart2 enable
+	AUXR |= (1<<4);//enable BRTR
+	AUXR |= (1<<3); //uart2 baud rate x12 enable
+	AUXR |= (1<<2); //BRT 1T mode
+    S2CON = 0x50;
+	IE2 |= (1<<0);  //uart2 interrupt enable
+	//IP2 &= ~(0x3<<0); //uart2 中断优先级设为最低
+#endif
 }
 
 
@@ -99,6 +107,38 @@ void uart1_initerrupt_receive(void) interrupt 4
       TI = 0;
   }
 }
+
+
+#if 0
+#define  S2RI   0x01
+#define  S2TI   0x02
+
+bit uart2_tx_busy = 0;
+
+sbit     P25 =  P2^5;
+
+void Uart2Isr(void) interrupt 8 using 1
+{
+  unsigned char reg;
+  if(S2CON&S2RI) {
+      S2CON &= ~S2RI;
+	  reg = S2BUF;
+	  P25 = !P25;
+  }
+  if(S2CON&S2TI) {
+    S2CON &= ~(S2TI);
+	uart2_tx_busy = 0;
+  }
+}
+
+void Uart2SendByte(unsigned char ch)
+{
+  while(uart2_tx_busy);
+  uart2_tx_busy = 1;
+  S2BUF = ch;
+}
+#endif
+
 
 char putchar(char ch)
 {

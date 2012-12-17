@@ -48,12 +48,13 @@ code unsigned char plc_test_buffer[128] =
 
 code unsigned char test_strasm_in[] = 
 {
-  '0','s','S','a',0x22,'E','E','S','S',0x01,0x02,0x03,'C','s','C','c','E','E','E','s','S','E'
+  0x0F,0x0F,0xF0,0x0F,0x88,0x05,0x00,0x00,0x00,0xff,0x00,0x00,0x00,0x00,0x00,0xF0
 };
 
 
 void main(void)
 {
+  unsigned char reg = 0xFF;
   unsigned int index = 0;
   unsigned long start;
   io_init();
@@ -79,6 +80,7 @@ void main(void)
   uart1_send_string("sys start ......\r\n");
 #endif
 
+  io_out_set_bits(0,&reg,8);
   while(1)
   {
     //unsigned char reg;
@@ -90,11 +92,26 @@ void main(void)
     //}
 	//
 	//PlcProcess();
+#ifdef DEBUG_ON
 	prase_in_stream(test_strasm_in[index++]);
 	if(index >= sizeof(test_strasm_in)) {
         index = 0;
 	}
+#endif
+    //Uart2SendByte('A');
 	//SerialRxCheckTimeoutTick();
+
+#ifndef DEBUG_ON
+     if(serial_stream_rx_finished()) {
+        unsigned int len = get_stream_len();
+        stream_packet_send(get_stream_ptr(),len);
+        serial_clear_stream();
+	    io_out_get_bits(0,&reg,8);
+        reg ^= 0xFF;
+	    io_out_set_bits(0,&reg,8);
+     }
+#endif
+
   }
 }
 
