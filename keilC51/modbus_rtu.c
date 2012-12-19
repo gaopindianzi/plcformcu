@@ -17,8 +17,8 @@
 #include "compiler.h"
 #include "serial_comm_packeter.h"
 
-#define  THIS_INFO  1
-#define  THIS_ERROR 1
+#define  THIS_INFO  0
+#define  THIS_ERROR 0
 
 
 unsigned int CRC16(unsigned char *Array,unsigned int Len)

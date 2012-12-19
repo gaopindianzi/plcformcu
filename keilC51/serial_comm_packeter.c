@@ -221,6 +221,12 @@ unsigned int tx_pack_and_send(unsigned char * src,unsigned int len)
             send_uart1(ptx->buffer[i]);
         }
         ptx->finished = 0;
+        //连续多发几个指令，这样就给网络处理芯片很多时间处理接收有用的数据
+        send_uart1(0);
+        send_uart1(0);
+        send_uart1(0);
+        send_uart1(0);
+        send_uart1(0);
 	} else {
         if(THIS_ERROR)printf("ptx->finished ERROR.\r\n");
     }
