@@ -39,10 +39,44 @@ sbit P13 = P1^3;
 
 #define  COUNTER_EVENT_BASE      4096  //0x10,0x00
 #define  COUNTER_EVENT_COUNT                40
+
+    unsigned char op;
+    unsigned char net_index;  //发送指令索引，因为发送需要间隔轮询，不能一起发送，这样会造成内存紧张
+    unsigned char remote_device_addr;
+    unsigned char remote_start_addr_hi;  //远端数据的起始地址
+    unsigned char remote_start_addr_lo;  //远端数据的起始地址
+    unsigned char local_start_addr_hi;  //远端数据的起始地址
+    unsigned char local_start_addr_lo;  //远端数据的起始地址
+    unsigned char data_number; //通信数据的个数
+    //输入变量
+    unsigned char enable_addr_hi;
+    unsigned char enable_addr_lo;
+    //激活一次通信
+    unsigned char request_addr_hi;
+    unsigned char request_addr_lo;
+    //通信进行中标记
+    unsigned char txing_hi;
+    unsigned char txing_lo;
+    //完成地址
+    unsigned char done_addr_hi;
+    unsigned char done_addr_lo;
+    //超时定时器索引
+    unsigned char timeout_addr_hi;
+    unsigned char timeout_addr_lo;
+    //定时超时,S
+    unsigned char timeout_val;
 */
 
 code unsigned char plc_test_buffer[128] = 
 {
+    1, //一个通信接口
+    PLC_LD, 0x00,0x00,
+    PLC_OUT,0x01,0x00,
+    PLC_OUT,0x02,0x01,
+    PLC_LD, 0x00,0x01,
+    PLC_OUT,0x02,0x02,
+    PLC_OUT,0x01,0x01,
+    PLC_NETRB,0,1,   0x02,0x00,   0x02,0x00,  1,  0x02,0x01, 0x02,0x02,0x02,0x03, 0x02,0x04, 0x0C,0x00,   5,
 	PLC_END,
 };
 
@@ -81,6 +115,7 @@ void main(void)
 #endif
 
   io_out_set_bits(0,&reg,8);
+  serial_rx_tx_initialize();
   while(1)
   {
     //unsigned char reg;
@@ -91,21 +126,18 @@ void main(void)
       //uart1_send_string("hahaha..");
     //}
 	//
-	//PlcProcess();
+	PlcProcess();
 #ifdef DEBUG_ON
-	prase_in_stream(test_strasm_in[index++]);
-	if(index >= sizeof(test_strasm_in)) {
-        index = 0;
-	}
+	//prase_in_stream(test_strasm_in[index++]);
+	//if(index >= sizeof(test_strasm_in)) {
+    //    index = 0;
+	//}
 #endif
     //Uart2SendByte('A');
 	//SerialRxCheckTimeoutTick();
 
 #ifndef DEBUG_ON
-    if(rx_pack.finished) {
-        rx_pack.finished = 0;
-        io_out_convert_bits(0,&reg,8);
-    }
+
 #endif
 
   }

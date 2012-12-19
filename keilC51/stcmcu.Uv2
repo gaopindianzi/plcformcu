@@ -69,7 +69,7 @@ Options 1,0,0  // Target 'Target 1'
  SVCSID <>
  MODEL5=2
  RTOS5=0
- ROMSZ5=1
+ ROMSZ5=2
  DHOLD5=0
  XHOLD5=0
  T51FL=637

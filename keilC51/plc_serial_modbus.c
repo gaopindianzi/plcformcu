@@ -13,8 +13,8 @@
 #include "plc_prase.h"
 
 
-extern unsigned char modbus_bits[BITS_TO_BS(IO_OUTPUT_COUNT)];
-extern unsigned char inputs_new[BITS_TO_BS(IO_INPUT_COUNT)];
+extern unsigned char xdata modbus_bits[BITS_TO_BS(IO_OUTPUT_COUNT)];
+extern unsigned char xdata inputs_new[BITS_TO_BS(IO_INPUT_COUNT)];
 
 
 unsigned int modbus_set_out_bits(unsigned int startbits,unsigned char * iobits,unsigned int bitcount)

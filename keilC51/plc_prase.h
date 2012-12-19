@@ -22,6 +22,10 @@
 #define  COUNTER_EVENT_COUNT                40
 
 
+#define  NET_DEV_MAX_COUNT                  5
+
+
+
 typedef struct _plc_sys_info
 {
     unsigned char plc_data_array[PLC_DATA_LEN];

@@ -12,7 +12,8 @@ typedef unsigned long DWORD;
 #define BIT_IS_SET(Bitarrys,Index)       (((Bitarrys)[(Index)/8]&code_msk[(Index)%8])?1:0)
 
 //字节数组编程WORD型
-#define BYTES_TO_WORD(bytes)            ((((WORD)((bytes)[1]))<<8)|(bytes)[0])
+#define LSB_BYTES_TO_WORD(bytes)            ((((WORD)((bytes)[1]))<<8)|(bytes)[0])
+#define HSB_BYTES_TO_WORD(bytes)            ((((WORD)((bytes)[0]))<<8)|(bytes)[1])
 
 #endif
 

@@ -44,6 +44,12 @@
 #define    PLC_BMOV    27
 #define    PLC_FMOV    28
 
+#define    PLC_NETRB   29
+#define    PLC_NETWB   30
+#define    PLC_NETRW   31
+#define    PLC_NETWW   32
+
+
 
 
 #define    PLC_END     0xFF  //结束指令
@@ -60,6 +66,27 @@ typedef struct _TIME_OP
 	WORD index;
 	WORD kval;
 } TIME_OP;
+
+
+typedef struct _NetCmdOptT
+{
+  unsigned char op;
+  unsigned char device_id;
+  unsigned char remote_start_addr_hi;  //远端数据的起始地址
+  unsigned char remote_start_addr_lo;  //远端数据的起始地址
+  unsigned char local_start_addr_hi;  //远端数据的起始地址
+  unsigned char local_start_addr_lo;  //远端数据的起始地址
+  unsigned char data_number; //常数
+  unsigned char timeout;    //常数
+  unsigned char data_type     : 1;  //常数
+  unsigned char rw_flag       : 1;  //常数
+  unsigned char enable        : 1;  //RX,继电器位变量寻址
+  unsigned char done          : 1;  //TX,辅助继电器寻址
+  unsigned char error         : 1;  //TX,辅助继电器寻址
+  unsigned char timeout_flag  : 1;  //TX,辅助继电器寻址
+} NetCmdOptT;
+
+
 
 
 

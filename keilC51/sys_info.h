@@ -16,7 +16,7 @@ typedef struct _eeprom_data_map
 	struct sys_info_type  sys_info;
 } eeprom_data_map;
 
-extern struct sys_info_type  sys_info;
+extern struct sys_info_type xdata sys_info;
 
 #endif
 

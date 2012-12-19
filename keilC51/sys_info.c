@@ -17,5 +17,5 @@
 
 
 
-struct sys_info_type  sys_info;
+struct sys_info_type  xdata sys_info;
 
