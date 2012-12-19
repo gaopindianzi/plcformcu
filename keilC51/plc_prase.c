@@ -872,7 +872,7 @@ void PlcProcess(void)
         rx_free_useless_packet(net_communication_count);
         net_global_send_index = 0;
     } else {
-        if(THIS_ERROR)printf("ai , mei yong !\r\n");
+        //¡Ó≈∆…–Œ¥¬÷ÕÍ
     }
 }
 
