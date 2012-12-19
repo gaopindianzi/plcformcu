@@ -696,61 +696,65 @@ void handle_plc_net_rb(void)
   NetRdOptT * p = (NetRdOptT *)plc_command_array;
   DATA_RX_PACKET_T * prx;
   //轮到这个通信指令执行时间了
-  if(net_global_send_index == p->net_index && get_bitval(HSB_BYTES_TO_WORD(&p->enable_addr_hi))) {
-    //是的，可以发送
-    if(get_bitval(HSB_BYTES_TO_WORD(&p->txing_hi))) {
-        //正在发送中，判断是否超时
-        if(get_bitval(HSB_BYTES_TO_WORD(&p->timeout_addr_hi))) {
-            //超时了，那么，重启一次发送程序
-            set_bitval(HSB_BYTES_TO_WORD(&p->done_addr_hi),0);
-            goto try_again;
-        } else {
-            //没有超时，那么等待应答数据是否到了
-            unsigned int i;
-            for(i=0;i<RX_PACKS_MAX_NUM;i++) {
-                prx = &rx_ctl.rx_packs[i];
-                if(prx->finished) {
-                    //MODBUS位指令翻译，根据翻译结果设置指定的位置
-                    unsigned int localbits = HSB_BYTES_TO_WORD(&p->local_start_addr_hi);
-                    if(THIS_ERROR)printf("rb get one rx packet.");
-                    if(modbus_prase_read_multi_coils_ack(p->remote_device_addr,prx->buffer,prx->index,localbits,p->data_number)) {
-                        //应答数据OK，可以完成此次数据请求，等待下一循环的请求
-                        if(THIS_ERROR)printf("rb rx ack data is ok.");
-                        set_bitval(HSB_BYTES_TO_WORD(&p->txing_hi),0);
-                        set_bitval(HSB_BYTES_TO_WORD(&p->timeout_addr_hi),0);
-                        set_bitval(HSB_BYTES_TO_WORD(&p->done_addr_hi),1);
-                        break; 
-				    }
-                }
-			}
-            if(prx == NULL) {
-                //没有收到应答耶，那我们再等一等吧。。。
-                //if(THIS_ERROR)printf("rb timeout,resend packet.");
-			}
-		}
-	} else {
-        //尚未发送
-try_again:
-		if(get_bitval(HSB_BYTES_TO_WORD(&p->request_addr_hi))) {
-            if(THIS_ERROR)printf("rb read coils send request.");
-			modbus_read_multi_coils_request(HSB_BYTES_TO_WORD(&p->local_start_addr_hi),p->data_number,p->remote_device_addr);
-            //然后启动定时器
-            timing_cell_stop(HSB_BYTES_TO_WORD(&p->timeout_addr_hi));
-            timing_cell_start(HSB_BYTES_TO_WORD(&p->timeout_addr_hi),p->timeout_val,1,0);
-            //置启动标记
-            set_bitval(HSB_BYTES_TO_WORD(&p->txing_hi),1);
+  if(net_global_send_index == p->net_index) {  //拿到令牌的
+	  rx_look_up_packet(); //拿到令牌的人，必须看一遍接收的数据，要不要要说一声。
+      //是的，可以发送
+	  if(get_bitval(HSB_BYTES_TO_WORD(&p->enable_addr_hi))) { //这个通信单元被使能的
+        if(get_bitval(HSB_BYTES_TO_WORD(&p->txing_hi))) {
+            //正在发送中，判断是否超时
+            if(get_bitval(HSB_BYTES_TO_WORD(&p->timeout_addr_hi))) {
+                //超时了，那么，重启一次发送程序
+                set_bitval(HSB_BYTES_TO_WORD(&p->done_addr_hi),0);
+                goto try_again;
+            } else {
+                //没有超时，那么等待应答数据是否到了
+                unsigned int i;
+                for(i=0;i<RX_PACKS_MAX_NUM;i++) {
+                    prx = &rx_ctl.rx_packs[i];
+                    if(prx->finished) {
+                        //MODBUS位指令翻译，根据翻译结果设置指定的位置
+                        unsigned int localbits = HSB_BYTES_TO_WORD(&p->local_start_addr_hi);
+                        if(THIS_ERROR)printf("rb get one rx packet.");
+                        if(modbus_prase_read_multi_coils_ack(p->remote_device_addr,prx->buffer,prx->index,localbits,p->data_number)) {
+                             //应答数据OK，可以完成此次数据请求，等待下一循环的请求
+                            if(THIS_ERROR)printf("rb rx ack data is ok.");
+                            set_bitval(HSB_BYTES_TO_WORD(&p->txing_hi),0);
+                            set_bitval(HSB_BYTES_TO_WORD(&p->timeout_addr_hi),0);
+                            set_bitval(HSB_BYTES_TO_WORD(&p->done_addr_hi),1);
+                            break; 
+		    		    }
+                    }
+    			}
+                if(prx == NULL) {
+                    //没有收到应答耶，那我们再等一等吧。。。
+                    //if(THIS_ERROR)printf("rb timeout,resend packet.");
+    			}
+	    	}
 		} else {
-			//允许发送，还没需要发送呢
+            //尚未发送
+try_again:
+    	 	if(get_bitval(HSB_BYTES_TO_WORD(&p->request_addr_hi))) {
+                if(THIS_ERROR)printf("rb read coils send request.");
+		    	modbus_read_multi_coils_request(HSB_BYTES_TO_WORD(&p->local_start_addr_hi),p->data_number,p->remote_device_addr);
+                //然后启动定时器
+                timing_cell_stop(HSB_BYTES_TO_WORD(&p->timeout_addr_hi));
+                timing_cell_start(HSB_BYTES_TO_WORD(&p->timeout_addr_hi),p->timeout_val,1,0);
+                //置启动标记
+                set_bitval(HSB_BYTES_TO_WORD(&p->txing_hi),1);
+	    	} else {
+			    //允许发送，还没需要发送呢
+			}
 		}
-	}
+	  } else {
+	    //发送使能被关闭的
+        //停止定时器
+        timing_cell_stop(HSB_BYTES_TO_WORD(&p->timeout_addr_hi));
+        set_bitval(HSB_BYTES_TO_WORD(&p->txing_hi),0);
+        set_bitval(HSB_BYTES_TO_WORD(&p->done_addr_hi),0);
+	  }
   } else {
-	  //不允许发送的
-      //停止定时器
-      timing_cell_stop(HSB_BYTES_TO_WORD(&p->timeout_addr_hi));
-      set_bitval(HSB_BYTES_TO_WORD(&p->txing_hi),0);
-      set_bitval(HSB_BYTES_TO_WORD(&p->done_addr_hi),0);
+	  //没有拿到令牌，那就等下一次吧
   }
-  rx_look_up_packet();
   plc_command_index += sizeof(NetRdOptT);
 }
 
