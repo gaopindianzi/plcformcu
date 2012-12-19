@@ -350,10 +350,9 @@ unsigned char modbus_read_multi_coils_request(unsigned int start_coils,unsigned 
 	return tx_pack_and_send((unsigned char *)&tx,sizeof(tx));
 }
 
-
 unsigned int modbus_prase_read_multi_coils_ack(unsigned char slave_device,unsigned char * rx_buffer,unsigned int len,unsigned int startbit,unsigned int count)
 {
-	struct modbus_force_multiple_coils_req_type
+	typedef struct __modbus_force_multiple_coils_req_type
 	{
 		unsigned char slave_addr;
 		unsigned char function;
@@ -362,15 +361,10 @@ unsigned int modbus_prase_read_multi_coils_ack(unsigned char slave_device,unsign
 		unsigned char quantiry_coils_hi;
 		unsigned char quantiry_coils_lo;
 		unsigned char byte_count;
-	};
-	struct modbus_force_multiple_coils_req_type2
-	{
-		struct modbus_force_multiple_coils_req_type head;
 		unsigned char database;
-	};
-	struct modbus_force_multiple_coils_req_type * pack = (struct modbus_force_multiple_coils_req_type *)rx_buffer;
-	struct modbus_force_multiple_coils_req_type2 * pack2 = (struct modbus_force_multiple_coils_req_type2 *)rx_buffer;
-	if(len > sizeof(struct modbus_force_multiple_coils_req_type) && pack->slave_addr == slave_device) {
+	} modbus_force_multiple_coils_req_type;
+	modbus_force_multiple_coils_req_type * pack = (modbus_force_multiple_coils_req_type *)rx_buffer;
+	if(len > sizeof(modbus_force_multiple_coils_req_type) && pack->slave_addr == slave_device) {
 		if(pack->function == 0x01) {  //READ_COIL_STATUS
 			if(startbit == HSB_BYTES_TO_WORD(&pack->start_addr_hi)) {
 				unsigned int count = HSB_BYTES_TO_WORD(&pack->start_addr_hi);

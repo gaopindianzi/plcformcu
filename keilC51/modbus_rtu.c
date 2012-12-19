@@ -15,6 +15,10 @@
 #include "modbus_rtu.h"
 #include "modbus_ascii.h"
 #include "compiler.h"
+#include "serial_comm_packeter.h"
+
+#define  THIS_INFO  1
+#define  THIS_ERROR 1
 
 
 unsigned int CRC16(unsigned char *Array,unsigned int Len)
@@ -209,8 +213,61 @@ prase_again:
 	}
 }
 
+void modbus_force_multiple_coils(unsigned char * ph,unsigned int len)
+{
+    unsigned int i;
+	mb_force_mulcoils_req_t * pm = (mb_force_mulcoils_req_t *)ph;
+	unsigned int crc = HSB_BYTES_TO_WORD(&ph[len - 2]);
+    if(THIS_INFO)printf("+modbus_force_multiple_coils\r\n");
+	if(crc != CRC16(ph,len-2)) {
+		return ;
+	}
+    i = HSB_BYTES_TO_WORD(&pm->quantiry_coils_hi);
+	if(pm->byte_count == BITS_TO_BS(i)) {
+        //字节数跟比特数符合长度规则
+        if(THIS_INFO)printf("+byte_count ok\r\n");
+		i = GET_OFFSET_MEM_OF_STRUCT(mb_force_mulcoils_req_t,force_data_base);
+        if(pm->byte_count == (len - i - 2)) {
+			//总长度减去头，减去CRC，也刚好等于规定字节的长度
+			//那么这个指令时正确的
+			unsigned int i;
+			unsigned int start = HSB_BYTES_TO_WORD(&pm->start_addr_hi);
+			for(i=0;i<HSB_BYTES_TO_WORD(&pm->quantiry_coils_hi);i++) {
+				set_bitval(start+i,BIT_IS_SET(&pm->force_data_base,i));
+			}
+			//然后返回应答
+			{
+				struct modbus_force_multiple_coils_ack_type * pack = (struct modbus_force_multiple_coils_ack_type *)ph;
+				crc = CRC16(ph,sizeof(struct modbus_force_multiple_coils_ack_type) - 2);
+				pack->crc_hi = crc >> 8;
+				pack->crc_lo = crc & 0xFF;
+                tx_pack_and_send((unsigned char *)&pack,sizeof(pack));
+			}
+		} else {
+			if(THIS_ERROR)printf("ERROR@: pm->byte_count == (len - i - 2)!\r\n");
+		}
+	} else {
+		if(THIS_ERROR)printf("ERROR@: pm->byte_count == (len - i - 2)!\r\n");
+	}
+    if(THIS_INFO)printf("-modbus_force_multiple_coils\r\n");
+}
 
 
-
-
+void handle_modbus_force_cmd(unsigned char * buffer,unsigned int len)
+{
+	modbus_head_t * ph = (modbus_head_t *)buffer;
+	if(ph->slave_addr != sys_info.modbus_addr) {
+		//不是这个设备
+		if(THIS_INFO)printf("handle modbus: not this device(0x%x)!\r\n",ph->slave_addr);
+		return ;
+	}
+	//是这个设备
+	switch(ph->function) {
+		case FUNC_FORCE_MULTIPLE_COILS:
+			modbus_force_multiple_coils(buffer,len);
+			break;
+		default:
+			break;
+	}
+}
 

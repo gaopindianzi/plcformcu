@@ -16,6 +16,12 @@ struct modbus_crc_type
   unsigned char crc_lo;
 };
 
+typedef struct _modbus_head_t
+{
+  unsigned char slave_addr;
+  unsigned char function;
+} modbus_head_t;
+
 struct modbus_force_single_coil_req_type
 {
   unsigned char slave_addr;
@@ -75,6 +81,8 @@ struct modbus_force_multiple_coils_req_type
   //后面还有很多
 };
 
+typedef struct modbus_force_multiple_coils_req_type  mb_force_mulcoils_req_t;
+
 struct modbus_force_multiple_coils_ack_type
 {
   unsigned char slave_addr;
@@ -121,6 +129,8 @@ struct modbus_preset_multiple_register_req_type
   unsigned char byte_count;
   unsigned char data_base;
   //后面还有不定长的数据
+  //.....
+  //结尾时两个字节的CRC
   //unsigned char crc_hi;
   //unsigned char crc_lo;
 };
@@ -140,6 +150,7 @@ struct modbus_preset_multiple_register_ack_type
 extern void UartReceivetoModbusRtu(unsigned char ch);
 extern void UartReceivetoModbusRtuTimeTick(void);
 extern unsigned int CRC16(unsigned char *Array,unsigned int Len);
+extern void handle_modbus_force_cmd(unsigned char * buffer,unsigned int len);
 
 #endif
 

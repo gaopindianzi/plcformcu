@@ -63,7 +63,7 @@
 //-------------------------------------------------------------------------
 //以下不需要修改
 //
-#define BITS_TO_BS(bit_num)    (((bit_num)+7)/8)
+#include "compiler.h"
 
 extern unsigned char io_out[BITS_TO_BS(REAL_IO_OUT_NUM)];
 extern code const unsigned char code_msk[8];

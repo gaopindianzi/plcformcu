@@ -14,6 +14,7 @@ sbit  RESET  =  P1^7;
 
 
 
+
 #define SET_IO_W1(on)    do{ IO_W1 = on; }while(0)
 #define SET_IO_W2(on)    do{ IO_W2 = on; }while(0)
 #define SET_IO_W3(on)    do{ IO_W3 = on; }while(0)
@@ -24,6 +25,16 @@ sbit  RESET  =  P1^7;
 		               P0M0 = 0x00;  P0M1 = 0xFF; }} while(0)
 #define GET_IO_VAL()     P0
 
+
+#define SET_P35_DIROUT(out)  \
+        do{ if(out) {  P3M0 |= (1<<5);  P3M1 &= ~(1<<5); } else {   \
+		               P3M0 &= ~(1<<5); P3M1 |= (1<<5); }} while(0)
+#define SET_P35_ON(on)  do{ if(on) { P3 |= (1<<5); } else { P3 &= ~(1<<5); }}while(0)
+
+#define SET_P47_DIROUT(out)  \
+        do{ if(out) {  P4M0 |= (1<<7);  P4M1 &= ~(1<<7); } else {   \
+		               P4M0 &= ~(1<<7); P4M1 |= (1<<7); }} while(0)
+#define SET_P47_ON(on)  do{ if(on) { P4 |= (1<<7); } else { P4 &= ~(1<<7); }}while(0)
 
 #if REAL_IO_INPUT_NUM > 0
 unsigned char io_in[BITS_TO_BS(REAL_IO_INPUT_NUM)];
@@ -56,6 +67,8 @@ void io_init(void)
   SET_IO_DELAY();
   memset(io_out,0,sizeof(io_out));
   SET_RESET(1);
+  SET_P35_DIROUT(1);
+  SET_P47_DIROUT(1);
 }
 
 
@@ -79,6 +92,8 @@ static void  io_out_clock_out(void)
 	SET_IO_W1(1);
 	SET_IO_DELAY();
 	SET_IO_W1(0);
+    SET_P35_ON(io_out[0]&0x01);
+    SET_P47_ON(io_out[0]&0x01);
 #endif
 }
 
@@ -151,6 +166,7 @@ unsigned int io_out_set_bits(unsigned int startbits,unsigned char * iobits,unsig
 	}
 	//…Ë÷√IOø⁄
 	io_out_clock_out();
+    
 	//∑µªÿ
 	return bitcount;
 }

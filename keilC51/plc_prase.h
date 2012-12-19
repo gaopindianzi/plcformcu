@@ -43,7 +43,7 @@ extern void PlcProcess(void);
 extern void plc_timing_tick_process(void);
 extern unsigned char plc_write_delay(void);
 extern void plc_set_busy(unsigned char busy);
-
+extern void set_bitval(unsigned int index,unsigned char bitval);
 
 //#define   DEBUG_PLC    
 

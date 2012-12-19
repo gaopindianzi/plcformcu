@@ -17,6 +17,7 @@
 #include "plc_command_def.h"
 #include "plc_prase.h"
 #include "serial_comm_packeter.h"
+#include "modbus_rtu.h"
 
 
 //100ms计时器的控制数据结构
@@ -657,6 +658,9 @@ void handle_plc_out_c(void)
 /**********************************************
  * 通信位指令处理程序
  * 如果找到接收到这个指令，则处理它，然后返回一个数据
+ * 这个指令可以一定允许，和激活，程序将等待上位机的位写指令
+ * 并且程序也定期询问指定的远程主机ID，非此ID，不接受
+ * 此ID主机可能是通用任意主机，广播主机，或指定IP的主机
  */
 //网络读指令
 
@@ -763,6 +767,26 @@ void handle_plc_net_wb(void)
 {
 }
 
+/************************************************
+ * 远程主机强制写默认处理函数
+ * 远程主机强制写功能
+ */
+void rx_default_force_write_cmd_handle(void)
+{
+    DATA_RX_PACKET_T * prx;
+	unsigned int i;
+	for(i=0;i<RX_PACKS_MAX_NUM;i++) {
+		prx = &rx_ctl.rx_packs[i];
+		if(prx->finished) {
+			//在清理之前，看看是还有用的指令
+			if(THIS_INFO)printf("sys_handle it one:\r\n");
+			if(prx->look_up_times >= net_communication_count) {
+				//发现这条指令没人需要，看看是否系统可接受的默认指令
+				handle_modbus_force_cmd(prx->buffer,prx->index);
+			}
+		}
+	}
+}
 
 void PlcProcess(void)
 {
@@ -869,10 +893,12 @@ void PlcProcess(void)
     if(++net_global_send_index >= net_communication_count) {
         //令牌溢出，重新来一遍，每个人都有机会做一次通信动作
         //
+        rx_default_force_write_cmd_handle();
         rx_free_useless_packet(net_communication_count);
         net_global_send_index = 0;
     } else {
         //令牌尚未轮完
+		
     }
 }
 
