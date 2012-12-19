@@ -220,7 +220,8 @@ void modbus_force_multiple_coils(unsigned char * ph,unsigned int len)
 	unsigned int crc = HSB_BYTES_TO_WORD(&ph[len - 2]);
     if(THIS_INFO)printf("+modbus_force_multiple_coils\r\n");
 	if(crc != CRC16(ph,len-2)) {
-		return ;
+		if(THIS_INFO)printf("++CRC ERROR\r\n");
+		//return ;
 	}
     i = HSB_BYTES_TO_WORD(&pm->quantiry_coils_hi);
 	if(pm->byte_count == BITS_TO_BS(i)) {
@@ -241,7 +242,7 @@ void modbus_force_multiple_coils(unsigned char * ph,unsigned int len)
 				crc = CRC16(ph,sizeof(struct modbus_force_multiple_coils_ack_type) - 2);
 				pack->crc_hi = crc >> 8;
 				pack->crc_lo = crc & 0xFF;
-                tx_pack_and_send((unsigned char *)&pack,sizeof(pack));
+                tx_pack_and_send((unsigned char *)&pack,sizeof(struct modbus_force_multiple_coils_ack_type));
 			}
 		} else {
 			if(THIS_ERROR)printf("ERROR@: pm->byte_count == (len - i - 2)!\r\n");
