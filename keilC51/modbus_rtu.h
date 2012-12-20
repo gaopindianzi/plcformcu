@@ -151,6 +151,5 @@ extern void UartReceivetoModbusRtu(unsigned char ch);
 extern void UartReceivetoModbusRtuTimeTick(void);
 extern unsigned int CRC16(unsigned char *Array,unsigned int Len);
 extern void handle_modbus_force_cmd(unsigned char * buffer,unsigned int len);
-
 #endif
 

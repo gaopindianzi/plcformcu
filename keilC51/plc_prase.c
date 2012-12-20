@@ -31,7 +31,7 @@ typedef struct _TIM100MS_ARRAYS_T
 	BYTE  holding_bits[BITS_TO_BS(TIMING100MS_EVENT_COUNT)];
 } TIM100MS_ARRAYS_T;
 
-TIM100MS_ARRAYS_T  xdata tim100ms_arrys;
+TIM100MS_ARRAYS_T  tim100ms_arrys;
 
 
 
@@ -46,7 +46,7 @@ typedef struct _TIM1S_ARRAYS_T
 	BYTE  holding_bits[BITS_TO_BS(TIMING1S_EVENT_COUNT)];
 } TIM1S_ARRAYS_T;
 
-TIM1S_ARRAYS_T   xdata  tim1s_arrys;
+TIM1S_ARRAYS_T    tim1s_arrys;
 
 //计数器的控制数据结构
 typedef struct _COUNTER_ARRAYS_T
@@ -58,7 +58,7 @@ typedef struct _COUNTER_ARRAYS_T
 	BYTE  last_trig_bits[BITS_TO_BS(COUNTER_EVENT_COUNT)];
 } COUNTER_ARRAYS_T;
 
-COUNTER_ARRAYS_T xdata counter_arrys;
+COUNTER_ARRAYS_T counter_arrys;
 
 //输入口
 unsigned int  xdata input_num;
@@ -67,9 +67,6 @@ unsigned char xdata inputs_last[BITS_TO_BS(IO_INPUT_COUNT)];
 //输出继电器
 unsigned char xdata output_last[BITS_TO_BS(IO_OUTPUT_COUNT)];
 unsigned char xdata output_new[BITS_TO_BS(IO_OUTPUT_COUNT)];
-//modbus专用寄存器
-unsigned char xdata modbus_bits[BITS_TO_BS(IO_OUTPUT_COUNT)];
-unsigned char xdata modbus_bits_last[BITS_TO_BS(IO_OUTPUT_COUNT)];
 //辅助继电器
 unsigned char xdata auxi_relays[BITS_TO_BS(AUXI_RELAY_COUNT)];
 unsigned char xdata auxi_relays_last[BITS_TO_BS(AUXI_RELAY_COUNT)];
@@ -151,6 +148,7 @@ void timing_cell_prcess(void);
  * 系统初始化
  */
 
+
 void PlcInit(void)
 {
     plc_cpu_stop = 0;
@@ -158,17 +156,19 @@ void PlcInit(void)
 	memset(bit_stack,0,sizeof(bit_stack));
 	bit_stack_sp = 0;
 	io_in_get_bits(0,inputs_new,IO_INPUT_COUNT);
-	io_out_get_bits(0,output_last,IO_OUTPUT_COUNT);
 	memcpy(inputs_last,inputs_new,sizeof(inputs_new));
+    memset(auxi_relays,0,sizeof(auxi_relays));
+    memset(auxi_relays_last,0,sizeof(auxi_relays_last));
 	plc_command_index = 0;
-    //memset(timing100ms,0,sizeof(timing100ms));
-	//memset(counter,0,sizeof(counter));
+	memset(output_new,0,sizeof(output_new));
 	memset(output_last,0,sizeof(output_last));
+    io_out_get_bits(0,output_last,IO_OUTPUT_COUNT);
 	sys_time_tick_init();
 	time100ms_come_flag = 0;
 	time1s_come_flag = 0;
-	//memset(timing100ms_event,0,sizeof(timing100ms_event));
-	//memset(timeing1s_event,0,sizeof(timeing1s_event));
+	memset(&tim100ms_arrys,0,sizeof(tim100ms_arrys));
+	memset(&tim1s_arrys,0,sizeof(tim1s_arrys));
+    memset(&counter_arrys,0,sizeof(counter_arrys));
 }
 
 
@@ -439,6 +439,7 @@ void handle_plc_out(void)
 	plc_command_index += 3;
 }
 
+
 /**********************************************
  * 与或与非运算
  */
@@ -592,6 +593,20 @@ void handle_plc_set_rst(void)
 	}
 	plc_command_index += 3;
 }
+/**********************************************
+ * 有输入去翻，没输入，不改变
+ */
+void handle_plc_seti(void)
+{
+	unsigned int idata bit_index = HSB_BYTES_TO_WORD(&plc_command_array[1]);
+	if(bit_acc) {
+        set_bitval(bit_index,!get_bitval(bit_index));
+	}
+	plc_command_index += 3;
+}
+
+
+
 /**********************************************
  * 取反结果
  */
@@ -767,26 +782,7 @@ void handle_plc_net_wb(void)
 {
 }
 
-/************************************************
- * 远程主机强制写默认处理函数
- * 远程主机强制写功能
- */
-void rx_default_force_write_cmd_handle(void)
-{
-    DATA_RX_PACKET_T * prx;
-	unsigned int i;
-	for(i=0;i<RX_PACKS_MAX_NUM;i++) {
-		prx = &rx_ctl.rx_packs[i];
-		if(prx->finished) {
-			//在清理之前，看看是还有用的指令
-			if(THIS_INFO)printf("sys_handle it one:\r\n");
-			if(prx->look_up_times >= net_communication_count) {
-				//发现这条指令没人需要，看看是否系统可接受的默认指令
-				handle_modbus_force_cmd(prx->buffer,prx->index);
-			}
-		}
-	}
-}
+
 
 void PlcProcess(void)
 {
@@ -815,6 +811,17 @@ void PlcProcess(void)
 	case PLC_LDI:
 		handle_plc_ld();
 		break;
+    case PLC_LDKH:
+        bit_acc = 1;
+        plc_command_index++;
+        break;
+    case PLC_LDKL:
+        bit_acc = 0;
+        plc_command_index++;
+        break;
+    case PLC_SEI:
+        handle_plc_seti();
+        break;
 	case PLC_OUT:
 		handle_plc_out();
 		break;
@@ -889,16 +896,10 @@ void PlcProcess(void)
 	//计数器处理
 	plc_set_busy(0);
     //把接收到的无用的数据清理掉
-
+    rx_free_useless_packet(net_communication_count);
     if(++net_global_send_index >= net_communication_count) {
         //令牌溢出，重新来一遍，每个人都有机会做一次通信动作
-        //
-        rx_default_force_write_cmd_handle();
-        rx_free_useless_packet(net_communication_count);
         net_global_send_index = 0;
-    } else {
-        //令牌尚未轮完
-		
     }
 }
 
@@ -906,33 +907,4 @@ void PlcProcess(void)
 
 
 
-
-/*****************************************************************
- * 通信程序在PLC中，可以任意时间读，
- * 但写指令只能在循环外面执行，应为如果再循环中间修改寄存器值的话，寄存器值变得不可控
- * 这种不可控一般体现在用户上，如果用户知道，可以提高性能
- * 但用户不知道，就变得难以理解
- * 为了降低难度，写指令放到循环完毕之后才开始做
- */
-
-/***********************************
- * 远程通信 
- * 指令具备以下功能：
- * 设备ID
- * 读还是写指令
- * 数据类型
- * 远端数据的起始地址
- * 本地数据的起始地址
- * 数据的长度，如果数据类型位，则表示一次通信多少位，如果类型是字，则表示一次传送多少个字
- * 使能通信
- * 通信超时时间,秒，0-255，0表示永远等待成功（是否继续通信根据通信激活脚位来设置)
- * 通信一次成功信号
- * 通信错误提示信号
- * 通信超时时间提示信号
- */
-/***********************************
- * 汇编指令可分为，位读，位写，字读，字写
- * 先实现位读，PLC等待远程主机的位读应答，如果成功，则数据反映在指定的本地位中
- * 然后再实现位写，PLC主动写数据到远程主机中,如果成功，则通信DONE提示一次成功标记
- */
 

@@ -242,7 +242,7 @@ void modbus_force_multiple_coils(unsigned char * ph,unsigned int len)
 				crc = CRC16(ph,sizeof(struct modbus_force_multiple_coils_ack_type) - 2);
 				pack->crc_hi = crc >> 8;
 				pack->crc_lo = crc & 0xFF;
-                tx_pack_and_send((unsigned char *)&pack,sizeof(struct modbus_force_multiple_coils_ack_type));
+                tx_pack_and_send((unsigned char *)pack,sizeof(struct modbus_force_multiple_coils_ack_type));
 			}
 		} else {
 			if(THIS_ERROR)printf("ERROR@: pm->byte_count == (len - i - 2)!\r\n");

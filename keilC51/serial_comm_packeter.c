@@ -93,6 +93,7 @@ void pack_prase_in(unsigned char ch)
 			 prx->index -= 2;
 			 prx->look_up_times = 0;
              prx->finished = 1;
+             if(THIS_INFO)printf("one rx  pack is finished\r\n");
          }
        }
 	   prx->state = STREAM_IDLE;
@@ -222,11 +223,6 @@ unsigned int tx_pack_and_send(unsigned char * src,unsigned int len)
         }
         ptx->finished = 0;
         //连续多发几个指令，这样就给网络处理芯片很多时间处理接收有用的数据
-        send_uart1(0);
-        send_uart1(0);
-        send_uart1(0);
-        send_uart1(0);
-        send_uart1(0);
 	} else {
         if(THIS_ERROR)printf("ptx->finished ERROR.\r\n");
     }
@@ -266,24 +262,6 @@ DATA_RX_PACKET_T * GetFinishedPacket(void)
 }
 
 
-void tx_free_useless_packet(unsigned int net_communication_count)
-{
-	unsigned int i;
-	DATA_RX_PACKET_T * prx;
-	for(i=0;i<RX_PACKS_MAX_NUM;i++) {
-		prx = &rx_ctl.rx_packs[i]; 
-		if(prx->finished) {
-			if(prx->look_up_times >= net_communication_count) {
-				prx->finished = 0; //所有人都看过了，结果没有人需要，则丢弃它。
-                if(THIS_ERROR)printf("clear rx(%d) buffer len(%d)\r\n",i,prx->index);
-			}
-		}
-	}
-}
-
-
-
-
 void rx_look_up_packet(void)
 {
 	unsigned int i;
@@ -297,7 +275,6 @@ void rx_look_up_packet(void)
 	}
 }
 
-
 void rx_free_useless_packet(unsigned int net_communication_count)
 {
 	unsigned int i;
@@ -306,11 +283,19 @@ void rx_free_useless_packet(unsigned int net_communication_count)
 		prx = &rx_ctl.rx_packs[i]; 
 		if(prx->finished) {
             if(THIS_ERROR)printf("start free useless packet!\r\n");
-			if(prx->look_up_times >= net_communication_count) {
-				prx->finished = 0; //所有人都看过了，结果没有人需要，则丢弃它。
-                if(THIS_ERROR)printf("clear it\r\n");
-			} else {
-                if(THIS_ERROR)printf("save it\r\n");
+            if(net_communication_count > 0) { //有通信指令
+			    if(prx->look_up_times >= net_communication_count) {
+   				    //发现这条指令没人需要，看看是否系统可接受的默认指令
+				    handle_modbus_force_cmd(prx->buffer,prx->index);
+				    prx->finished = 0;
+                    if(THIS_INFO)printf("clear it\r\n");
+			    } else {
+                    if(THIS_INFO)printf("save it\r\n");
+                }
+            } else {
+                //没有通信指令
+                handle_modbus_force_cmd(prx->buffer,prx->index);
+                prx->finished = 0;
             }
 		}
 	}
@@ -370,6 +355,7 @@ unsigned int modbus_prase_read_multi_coils_ack(unsigned char slave_device,unsign
 		unsigned char database;
 	} modbus_force_multiple_coils_req_type;
 	modbus_force_multiple_coils_req_type * pack = (modbus_force_multiple_coils_req_type *)rx_buffer;
+    count = count;
 	if(len > sizeof(modbus_force_multiple_coils_req_type) && pack->slave_addr == slave_device) {
 		if(pack->function == 0x01) {  //READ_COIL_STATUS
 			if(startbit == HSB_BYTES_TO_WORD(&pack->start_addr_hi)) {

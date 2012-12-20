@@ -67,27 +67,42 @@ sbit P13 = P1^3;
     unsigned char timeout_val;
 */
 
+
 code unsigned char plc_test_buffer[128] = 
 {
     2, //一个通信接口
-    PLC_LD, 0x00,0x00,
-    PLC_OUT,0x01,0x00,
-    PLC_OUT,0x02,0x01,
-    PLC_LD, 0x00,0x01,
-    PLC_OUT,0x02,0x02,
-    PLC_OUT,0x01,0x01,
+    PLC_LDKH,
+    PLC_OUT,  0x02,0x01,
+    PLC_OUT,  0x02,0x02,
     //               远程地址     本地地址  数量  允许       请求      进行中     完成       超时定时器  超时时间
     PLC_NETRB,0,1,   0x02,0x00,   0x02,0x00,  1,  0x02,0x01, 0x02,0x02,0x02,0x03, 0x02,0x04, 0x0C,0x00,   5,
 
-    PLC_LD, 0x00,0x02, //第三个开关
-    PLC_OUT,0x02,0x05,
-    PLC_OUT,0x02,0x06,
+    PLC_LDKH,
+    PLC_OUT,  0x02,0x05,
+    PLC_OUT,  0x02,0x06,
 
     PLC_NETRB,1,2,   0x02,0x01,   0x02,0x01,  1,  0x02,0x05, 0x02,0x06,0x02,0x07, 0x02,0x08, 0x0C,0x01,   6,
 
 
 	PLC_END,
 };
+
+/*
+code unsigned char plc_test_buffer[128] = 
+{
+    0, //一个通信接口
+//    PLC_LD, 0x00,0x00,
+  //  PLC_ANI, 0x08,0x00,
+
+    PLC_LDI, 0x08,0x00,
+    PLC_OUTT,0x08,0x00,0x00,10,
+
+    PLC_LDP, 0x08,0x00,
+    PLC_SEI, 0x01,0x00,
+	PLC_END
+};
+*/
+
 
 code unsigned char test_strasm_in[] = 
 {
@@ -97,7 +112,7 @@ code unsigned char test_strasm_in[] =
 
 void main(void)
 {
-  unsigned char reg = 0xFF;
+  unsigned char reg = 0;
   unsigned int index = 0;
   unsigned long start;
   io_init();
@@ -106,7 +121,7 @@ void main(void)
   PlcInit();
   start = get_sys_clock();
   sys_info.modbus_addr = 0x88;
-  sys_unlock();
+  
 #ifndef DEBUG_ON
   delayms(1000);
   uart1_send_string("\r\n");
@@ -125,6 +140,7 @@ void main(void)
 
   io_out_set_bits(0,&reg,8);
   serial_rx_tx_initialize();
+  sys_unlock();
   while(1)
   {
     //unsigned char reg;
