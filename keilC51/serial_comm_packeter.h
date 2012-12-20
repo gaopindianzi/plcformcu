@@ -2,7 +2,7 @@
 #define __SERIAL_COMM_PACKER_H__
 
 
-#define  PACK_MAX_RX_SIZE   16
+#define  PACK_MAX_RX_SIZE   32
 #define  RX_PACKS_MAX_NUM   2
 #define  TX_PACKS_MAX_NUM   1
 
@@ -12,8 +12,8 @@ typedef struct _DATA_RX_PACKET_T
   unsigned char buffer[PACK_MAX_RX_SIZE];
   unsigned int  look_up_times;  //别查看次数
   unsigned char index;
-  unsigned char state : 4;
-  unsigned char finished : 1;
+  unsigned char state;
+  volatile unsigned char finished;
 } DATA_RX_PACKET_T;
 
 
@@ -32,7 +32,7 @@ typedef struct _DATA_TX_PACKET_T
 {
   unsigned char buffer[PACK_MAX_RX_SIZE + PACK_MAX_RX_SIZE/2];
   unsigned char index;  //发送的大小
-  unsigned char finished : 1;
+  volatile   unsigned char finished;
 } DATA_TX_PACKET_T;
 
 typedef struct _DATA_TX_CTL_T

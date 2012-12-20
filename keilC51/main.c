@@ -83,9 +83,21 @@ code unsigned char plc_test_buffer[128] =
 
     PLC_NETRB,1,2,   0x02,0x01,   0x02,0x01,  1,  0x02,0x05, 0x02,0x06,0x02,0x07, 0x02,0x08, 0x0C,0x01,   6,
 
+    PLC_LDP , 0x00,0x00,
+    PLC_SET, 0x01,0x00,
+    PLC_LDF, 0x00,0x00,
+    PLC_RST, 0x01,0x00,
+
+    PLC_SEI, 0x01,0x02,
+    PLC_SEI, 0x01,0x03,
+    PLC_SEI, 0x01,0x04,
+    PLC_SEI, 0x01,0x05,
+    PLC_SEI, 0x01,0x06,
+    PLC_SEI, 0x01,0x07,
 
 	PLC_END,
 };
+
 
 /*
 code unsigned char plc_test_buffer[128] = 
@@ -99,16 +111,29 @@ code unsigned char plc_test_buffer[128] =
 
     PLC_LDP, 0x08,0x00,
     PLC_SEI, 0x01,0x00,
+
+    PLC_LD , 0x00,0x00,
+    PLC_SEI, 0x01,0x00,
+    PLC_OUT, 0x01,0x01,
+    PLC_OUT, 0x01,0x02,
+    PLC_OUT, 0x01,0x03,
+    PLC_OUT, 0x01,0x04,
+    PLC_OUT, 0x01,0x05,
+    PLC_OUT, 0x01,0x06,
+    PLC_OUT, 0x01,0x07,
 	PLC_END
 };
 */
 
 
+
 code unsigned char test_strasm_in[] = 
 {
-  0x0F,0x0F,0xF0,0x0F,0x88,0x05,0x00,0x00,0x00,0xff,0x00,0x00,0x00,0x00,0x00,0xF0
+  0x0F,0x88,0x55,0x50,0x01,0x00,0x00,0x08,0x01,0xFF,0xCC,0xCC,0xF3,0x61,0xF0,
 };
 
+extern unsigned char rx_int_buffer[32];
+extern unsigned char rx_int_count;
 
 void main(void)
 {
@@ -150,8 +175,36 @@ void main(void)
      // start = get_sys_clock();
       //uart1_send_string("hahaha..");
     //}
-	//
+	//   
+    //delayms(1000);
 	PlcProcess();
+#if 1
+    if(0) {
+        unsigned int i;
+        reg = 0x01;
+        sys_lock();
+        if(rx_int_count >= sizeof(rx_int_buffer)) {
+            uart1_send_data(rx_int_buffer,rx_int_count);
+            io_out_convert_bits(7,&reg,1);
+            for(i=0;i<sizeof(rx_int_buffer);i++) {
+                pack_prase_in(rx_int_buffer[i]);
+            }
+            rx_int_count = 0;
+        }
+        sys_unlock();
+    }
+    if(1) {
+       unsigned char i;
+       sys_lock();
+       for(i=0;i<rx_int_count;i++) {
+           pack_prase_in(rx_int_buffer[i]);
+       }
+       rx_int_count = 0;
+       sys_unlock();
+       //delayms(1000);
+    }
+#endif
+    
 #ifdef DEBUG_ON
 	//prase_in_stream(test_strasm_in[index++]);
 	//if(index >= sizeof(test_strasm_in)) {

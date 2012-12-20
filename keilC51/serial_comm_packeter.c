@@ -6,6 +6,8 @@
 #define  THIS_ERROR   0
 
 
+#include "STC12C5A60S2.h"
+
 #include "hal_io.h"
 #include "hal_stc_io.h"
 #include "eeprom.h"
@@ -33,35 +35,54 @@ DATA_TX_CTL_T    tx_ctl;
 
 void serial_rx_tx_initialize(void)
 {
-	unsigned int i;
-	for(i=0;i<RX_PACKS_MAX_NUM;i++) {
-        rx_ctl.rx_packs[i].finished = 0;
-	}
-	for(i=0;i<TX_PACKS_MAX_NUM;i++) {
-        tx_ctl.packet[i].finished = 0;
-	}
+    memset(&rx_ctl,0,sizeof(rx_ctl));
+    memset(&tx_ctl,0,sizeof(tx_ctl));
 }
 
 
-void rx_find_next_empty_buffer(void)
+void rx_find_next_empty_buffer(void) 
 {
 	unsigned int i;
-	rx_ctl.pcurrent_rx = NULL;
+	(rx_ctl.pcurrent_rx) = NULL;
 	for(i=0;i<RX_PACKS_MAX_NUM;i++) {
-		if(!(rx_ctl.rx_packs[i].finished)) {
-			rx_ctl.pcurrent_rx = &rx_ctl.rx_packs[i];
+		if(!(((rx_ctl.rx_packs)[i]).finished)) {
+			rx_ctl.pcurrent_rx = &((rx_ctl.rx_packs)[i]);
 			break;
 		}
 	}
 }
 
+void dumphex(unsigned char hex)
+{
+  unsigned char ch;
+  ch = hex >> 4;
+  ch = (ch > 9)?(ch+'A' - 10):(ch+'0');
+  send_uart1(ch);
+  ch = hex & 0x0F;
+  ch = (ch > 9)?(ch+'A' - 10):(ch+'0');
+  send_uart1(ch);
+}
+
+
+void dumpdata(unsigned char * buf,unsigned int len)
+{
+  unsigned int i;
+  send_uart1('\r');
+  send_uart1('\n');
+  for(i=0;i<len;i++) {
+    dumphex(buf[i]);
+    send_uart1(',');
+  }
+ // send_uart1('\r');
+ // send_uart1('\n');
+}
 
 void pack_prase_in(unsigned char ch)
 {
    DATA_RX_PACKET_T * prx;
-   if(rx_ctl.pcurrent_rx == NULL) {
+   if((rx_ctl.pcurrent_rx) == NULL) {
 	   rx_find_next_empty_buffer();
-	   if(rx_ctl.pcurrent_rx == NULL) {
+	   if((rx_ctl.pcurrent_rx) == NULL) {
 		   return ;
 	   }
    }
@@ -88,12 +109,13 @@ void pack_prase_in(unsigned char ch)
        prx->state = STREAM_IDLE;
      } else if(ch == STREAM_END) {
        if(prx->index >= 3) {
-         unsigned int crc = CRC16(prx->buffer,prx->index-2);
-         if(crc == LSB_BYTES_TO_WORD(&prx->buffer[prx->index-2])) {
+         unsigned int crc = CRC16_INTTRUPT((prx->buffer),(prx->index-2));
+         if(crc == LSB_BYTES_TO_WORD(&(prx->buffer[prx->index-2]))) {
+         //dumpdata(prx->buffer,prx->index-2);
+        // INV_P47_ON();
 			 prx->index -= 2;
 			 prx->look_up_times = 0;
              prx->finished = 1;
-             if(THIS_INFO)printf("one rx  pack is finished\r\n");
          }
        }
 	   prx->state = STREAM_IDLE;
@@ -126,6 +148,91 @@ void pack_prase_in(unsigned char ch)
 }
 
 
+#if 0
+//中断调用函数
+//这里面使用的函数全部独立编写
+void pack_prase_in(unsigned char ch)
+{ 
+   DATA_RX_PACKET_T * prx;
+
+  // send_uart1(ch);
+
+   //return ;
+
+   if(rx_ctl.pcurrent_rx == NULL) {
+	   rx_find_next_empty_buffer();
+	   if(rx_ctl.pcurrent_rx == NULL) {
+		   return ;
+	   }
+   }
+   prx = rx_ctl.pcurrent_rx;
+   if(prx->finished) {
+	   rx_find_next_empty_buffer();
+	   prx = rx_ctl.pcurrent_rx;
+	   if(prx == NULL) {
+		   return ;
+	   }
+   }
+   switch(prx->state)
+   {
+   case STREAM_IDLE:
+     if(ch == STREAM_START) {
+       prx->state = STREAM_NORMAL;
+       prx->index = 0;
+     }
+     break;
+   case STREAM_NORMAL:
+     if(ch == STREAM_ESCAPE) {
+       prx->state = STREAM_IN_ESC;
+     } else if(ch == STREAM_START) {
+       prx->state = STREAM_IDLE;
+     } else if(ch == STREAM_END) {
+       if(prx->index >= 3) {
+         unsigned int crc;
+         dumpdata(prx->buffer,prx->index);
+         INV_P47_ON();
+#if 0         
+         crc = CRC16_INTTRUPT(prx->buffer,prx->index-2);
+         if(crc == LSB_BYTES_TO_WORD(&prx->buffer[prx->index-2])) {
+             
+			 prx->index -= 2;
+			 prx->look_up_times = 0;
+             prx->finished = 1;
+             if(THIS_INFO)printf("one rx  pack is finished\r\n");
+         }
+#endif
+       }
+	   prx->state = STREAM_IDLE;
+     } else {
+       prx->buffer[prx->index++] = ch;
+     }
+     break;
+   case STREAM_IN_ESC:
+     if(ch == STREAM_ESCAPE) {
+       prx->buffer[prx->index++] = STREAM_ESCAPE;
+       prx->state = STREAM_NORMAL;
+     } else if(ch == STREAM_ES_S) {
+       prx->buffer[prx->index++] = STREAM_START;
+       prx->state = STREAM_NORMAL;
+     } else if(ch == STREAM_ES_E) {
+       prx->buffer[prx->index++] = STREAM_END;
+       prx->state = STREAM_NORMAL;
+     } else {
+       prx->state = STREAM_IDLE;
+     }
+     break;
+   default:
+     prx->state = STREAM_IDLE;
+     break;
+   }
+   //溢出判断
+   if(prx->index >= sizeof(prx->buffer)) {
+     prx->state = STREAM_IDLE;
+     
+   }
+}
+
+#endif
 
 
 
@@ -173,7 +280,7 @@ DATA_TX_PACKET_T * prase_in_buffer(unsigned char * src,unsigned int len)
 		 return NULL;
 	 }
 	 if(1) {
-		 unsigned int crc = CRC16(src,len);
+         unsigned int crc = CRC16(src,len);
 		 ptx->index = 0;
 		 ptx->buffer[ptx->index++] = STREAM_START;
 		 while(len--) {
@@ -199,7 +306,7 @@ DATA_TX_PACKET_T * prase_in_buffer(unsigned char * src,unsigned int len)
 		 if(ptx->index > 0) {
 		     ptx->buffer[ptx->index++] = crc & 0xFF;
 		     ptx->buffer[ptx->index++] = crc >> 8;
-		     ptx->buffer[ptx->index++] = STREAM_END;
+             ptx->buffer[ptx->index++] = STREAM_END;
 		     ptx->finished = 1;
 		 }
 	 }

@@ -34,7 +34,7 @@ void Timer1Init(void)		//5∫¡√Î@20.000MHz
 
 static unsigned long system_current_time_tick = 0;
 
-void timer1_interrupt() interrupt 3 using 1
+void timer1_interrupt() interrupt 3
 {
    TH1 = TMR1_RELOAD_H;
    TL1 = TMR1_RELOAD_L;
@@ -42,7 +42,7 @@ void timer1_interrupt() interrupt 3 using 1
    //UartReceivetoModbusRtuTimeTick();
 }
 
-unsigned long get_sys_clock(void) reentrant 
+unsigned long get_sys_clock(void) 
 {
     unsigned long ret;
     sys_lock();
@@ -91,16 +91,22 @@ void send_uart1(unsigned char ch)
 }
 
 
-void uart1_initerrupt_receive(void) interrupt 4
+unsigned char rx_int_buffer[32];
+unsigned char rx_int_count = 0;
+
+void uart1_initerrupt_receive(void) interrupt 4 using 2
 {
   unsigned char k = 0;
   if(RI == 1) 
-  {
+  {    
       RI = 0;
 	  k = SBUF;
       //send_uart1(k);
 	  //UartReceivetoModbusRtu(k);
-	  pack_prase_in(k);
+      if(rx_int_count < sizeof(rx_int_buffer)) {
+          rx_int_buffer[rx_int_count++] = k;
+      }
+	  //pack_prase_in(k);
   }
   else 
   {
@@ -117,7 +123,7 @@ bit uart2_tx_busy = 0;
 
 sbit     P25 =  P2^5;
 
-void Uart2Isr(void) interrupt 8 using 1
+void Uart2Isr(void) interrupt 8
 {
   unsigned char reg;
   if(S2CON&S2RI) {
@@ -154,14 +160,23 @@ void uart1_send_string(char * pstr)
 	}
 }
 
-unsigned char lock = 0;
+void uart1_send_data(unsigned char * pbuf,unsigned int len)
+{
+    unsigned int i;
+    for(i=0;i<len;i++) {
+    	send_uart1(pbuf[i]);
+	}
+}
 
-void sys_lock(void) reentrant 
+
+volatile unsigned long lock = 0;
+
+void sys_lock(void)
 {
   EA = 0;
   lock++;
 }
-void sys_unlock(void) reentrant 
+void sys_unlock(void)
 {
   if(lock == 0) {
     EA = 1;

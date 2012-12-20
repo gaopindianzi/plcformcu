@@ -92,8 +92,7 @@ static void  io_out_clock_out(void)
 	SET_IO_W1(1);
 	SET_IO_DELAY();
 	SET_IO_W1(0);
-    SET_P35_ON(io_out[0]&0x01);
-    SET_P47_ON(io_out[0]&0x01);
+
 #endif
 }
 

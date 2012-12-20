@@ -76,5 +76,9 @@ extern unsigned int io_in_get_bits(unsigned int startbits,unsigned char * iobits
 extern void fwrite(unsigned char * buffer,unsigned int s,unsigned int len,void * file);
 extern void dump_data(void * buffer,unsigned int len);
 
+
+#define INV_P47_ON()  do{ P4 ^= (1<<7); }while(0)
+
+
 #endif
 
