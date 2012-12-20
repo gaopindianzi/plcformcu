@@ -282,7 +282,7 @@ void rx_free_useless_packet(unsigned int net_communication_count)
 	for(i=0;i<RX_PACKS_MAX_NUM;i++) {
 		prx = &rx_ctl.rx_packs[i]; 
 		if(prx->finished) {
-            if(THIS_ERROR)printf("start free useless packet!\r\n");
+            if(THIS_INFO)printf("start free useless packet!\r\n");
             if(net_communication_count > 0) { //有通信指令
 			    if(prx->look_up_times >= net_communication_count) {
    				    //发现这条指令没人需要，看看是否系统可接受的默认指令
