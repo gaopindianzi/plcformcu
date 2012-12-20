@@ -46,30 +46,6 @@ unsigned int CRC16(unsigned char *Array,unsigned int Len)
 
 
 
-unsigned int CRC16_INTTRUPT(unsigned char *Array,unsigned int Len)
-{
-	WORD  IX,IY,CRC;
-	CRC=0xFFFF;//set all 1
-	if (Len<=0) {
-		CRC = 0;
-	} else {
-		Len--;
-		for (IX=0;IX<=Len;IX++)
-		{
-			CRC=CRC^(WORD)(Array[IX]);
-			for(IY=0;IY<=7;IY++) {
-				if ((CRC&1)!=0) {
-					CRC=(CRC>>1)^0xA001;
-				} else {
-					CRC=CRC>>1;
-				}
-			}
-		}
-	}
-	return CRC;
-}
-
-
 
 
 #if 0

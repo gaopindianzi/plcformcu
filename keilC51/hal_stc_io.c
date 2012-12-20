@@ -92,26 +92,36 @@ void send_uart1(unsigned char ch)
 
 
 unsigned char rx_int_buffer[32];
-unsigned char rx_int_count = 0;
+unsigned int  rx_int_count = 0;
 
 void uart1_initerrupt_receive(void) interrupt 4 using 2
 {
   unsigned char k = 0;
   if(RI == 1) 
-  {    
+  {
       RI = 0;
 	  k = SBUF;
-      //send_uart1(k);
-	  //UartReceivetoModbusRtu(k);
       if(rx_int_count < sizeof(rx_int_buffer)) {
           rx_int_buffer[rx_int_count++] = k;
       }
-	  //pack_prase_in(k);
   }
   else 
   {
       TI = 0;
   }
+}
+
+
+//这个函数只能在主程序中调用，在串口中调用会出问题
+void uart1_rx_buffer_process(void)
+{
+   unsigned char i;
+   sys_lock();
+   for(i=0;i<rx_int_count;i++) {
+       pack_prase_in(rx_int_buffer[i]);
+   }
+   rx_int_count = 0;
+   sys_unlock();
 }
 
 

@@ -152,7 +152,6 @@ struct modbus_preset_multiple_register_ack_type
 
 
 extern unsigned int CRC16(unsigned char *Array,unsigned int Len);
-extern unsigned int CRC16_INTTRUPT(unsigned char *Array,unsigned int Len);
 extern void handle_modbus_force_cmd(unsigned char * buffer,unsigned int len);
 
 

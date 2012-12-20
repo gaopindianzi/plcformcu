@@ -168,56 +168,8 @@ void main(void)
   sys_unlock();
   while(1)
   {
-    //unsigned char reg;
-	//io_in_get_bits(0,&reg,8);
-	//io_out_set_bits(0,&reg,8);
-    //if((get_sys_clock() - start) >= TICK_SECOND) {
-     // start = get_sys_clock();
-      //uart1_send_string("hahaha..");
-    //}
-	//   
-    //delayms(1000);
 	PlcProcess();
-#if 1
-    if(0) {
-        unsigned int i;
-        reg = 0x01;
-        sys_lock();
-        if(rx_int_count >= sizeof(rx_int_buffer)) {
-            uart1_send_data(rx_int_buffer,rx_int_count);
-            io_out_convert_bits(7,&reg,1);
-            for(i=0;i<sizeof(rx_int_buffer);i++) {
-                pack_prase_in(rx_int_buffer[i]);
-            }
-            rx_int_count = 0;
-        }
-        sys_unlock();
-    }
-    if(1) {
-       unsigned char i;
-       sys_lock();
-       for(i=0;i<rx_int_count;i++) {
-           pack_prase_in(rx_int_buffer[i]);
-       }
-       rx_int_count = 0;
-       sys_unlock();
-       //delayms(1000);
-    }
-#endif
-    
-#ifdef DEBUG_ON
-	//prase_in_stream(test_strasm_in[index++]);
-	//if(index >= sizeof(test_strasm_in)) {
-    //    index = 0;
-	//}
-#endif
-    //Uart2SendByte('A');
-	//SerialRxCheckTimeoutTick();
-
-#ifndef DEBUG_ON
-
-#endif
-
+    uart1_rx_buffer_process();
   }
 }
 

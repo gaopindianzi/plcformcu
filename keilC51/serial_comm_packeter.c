@@ -73,8 +73,6 @@ void dumpdata(unsigned char * buf,unsigned int len)
     dumphex(buf[i]);
     send_uart1(',');
   }
- // send_uart1('\r');
- // send_uart1('\n');
 }
 
 void pack_prase_in(unsigned char ch)
@@ -109,10 +107,8 @@ void pack_prase_in(unsigned char ch)
        prx->state = STREAM_IDLE;
      } else if(ch == STREAM_END) {
        if(prx->index >= 3) {
-         unsigned int crc = CRC16_INTTRUPT((prx->buffer),(prx->index-2));
+         unsigned int crc = CRC16((prx->buffer),(prx->index-2));
          if(crc == LSB_BYTES_TO_WORD(&(prx->buffer[prx->index-2]))) {
-         //dumpdata(prx->buffer,prx->index-2);
-        // INV_P47_ON();
 			 prx->index -= 2;
 			 prx->look_up_times = 0;
              prx->finished = 1;
@@ -146,96 +142,6 @@ void pack_prase_in(unsigned char ch)
      prx->state = STREAM_IDLE;
    }
 }
-
-
-#if 0
-//中断调用函数
-//这里面使用的函数全部独立编写
-void pack_prase_in(unsigned char ch)
-{ 
-   DATA_RX_PACKET_T * prx;
-
-  // send_uart1(ch);
-
-   //return ;
-
-   if(rx_ctl.pcurrent_rx == NULL) {
-	   rx_find_next_empty_buffer();
-	   if(rx_ctl.pcurrent_rx == NULL) {
-		   return ;
-	   }
-   }
-   prx = rx_ctl.pcurrent_rx;
-   if(prx->finished) {
-	   rx_find_next_empty_buffer();
-	   prx = rx_ctl.pcurrent_rx;
-	   if(prx == NULL) {
-		   return ;
-	   }
-   }
-   switch(prx->state)
-   {
-   case STREAM_IDLE:
-     if(ch == STREAM_START) {
-       prx->state = STREAM_NORMAL;
-       prx->index = 0;
-     }
-     break;
-   case STREAM_NORMAL:
-     if(ch == STREAM_ESCAPE) {
-       prx->state = STREAM_IN_ESC;
-     } else if(ch == STREAM_START) {
-       prx->state = STREAM_IDLE;
-     } else if(ch == STREAM_END) {
-       if(prx->index >= 3) {
-         unsigned int crc;
-         dumpdata(prx->buffer,prx->index);
-         INV_P47_ON();
-#if 0         
-         crc = CRC16_INTTRUPT(prx->buffer,prx->index-2);
-         if(crc == LSB_BYTES_TO_WORD(&prx->buffer[prx->index-2])) {
-             
-			 prx->index -= 2;
-			 prx->look_up_times = 0;
-             prx->finished = 1;
-             if(THIS_INFO)printf("one rx  pack is finished\r\n");
-         }
-#endif
-       }
-	   prx->state = STREAM_IDLE;
-     } else {
-       prx->buffer[prx->index++] = ch;
-     }
-     break;
-   case STREAM_IN_ESC:
-     if(ch == STREAM_ESCAPE) {
-       prx->buffer[prx->index++] = STREAM_ESCAPE;
-       prx->state = STREAM_NORMAL;
-     } else if(ch == STREAM_ES_S) {
-       prx->buffer[prx->index++] = STREAM_START;
-       prx->state = STREAM_NORMAL;
-     } else if(ch == STREAM_ES_E) {
-       prx->buffer[prx->index++] = STREAM_END;
-       prx->state = STREAM_NORMAL;
-     } else {
-       prx->state = STREAM_IDLE;
-     }
-     break;
-   default:
-     prx->state = STREAM_IDLE;
-     break;
-   }
-   //溢出判断
-   if(prx->index >= sizeof(prx->buffer)) {
-     prx->state = STREAM_IDLE;
-     
-   }
-}
-
-#endif
-
-
-
 
 
 /*************************************************
@@ -377,7 +283,7 @@ void rx_look_up_packet(void)
 		prx = &rx_ctl.rx_packs[i]; 
 		if(prx->finished) {
             prx->look_up_times++;
-            if(THIS_ERROR)printf("see it.\r\n");
+            if(THIS_INFO)printf("see it.\r\n");
 		}
 	}
 }
@@ -395,9 +301,9 @@ void rx_free_useless_packet(unsigned int net_communication_count)
    				    //发现这条指令没人需要，看看是否系统可接受的默认指令
 				    handle_modbus_force_cmd(prx->buffer,prx->index);
 				    prx->finished = 0;
-                    if(1)printf("clear it\r\n");
+                    if(THIS_INFO)printf("clear it\r\n");
 			    } else {
-                    if(1)printf("save it\r\n");
+                    if(THIS_INFO)printf("save it\r\n");
                 }
             } else {
                 //没有通信指令

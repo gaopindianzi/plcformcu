@@ -13,6 +13,8 @@ void sys_lock(void);
 void sys_unlock(void);
 void uart1_send_data(unsigned char * pbuf,unsigned int len);
 void Uart2SendByte(unsigned char ch);
+void uart1_rx_buffer_process(void);
+
 
 #endif
 
