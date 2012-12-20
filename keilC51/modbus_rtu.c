@@ -21,7 +21,7 @@
 #define  THIS_ERROR 0
 
 
-unsigned int CRC16(unsigned char *Array,unsigned int Len)
+unsigned int CRC16(unsigned char *Array,unsigned int Len) reentrant
 {
 	WORD  IX,IY,CRC;
 	CRC=0xFFFF;//set all 1
@@ -43,6 +43,9 @@ unsigned int CRC16(unsigned char *Array,unsigned int Len)
 	}
 	return CRC;
 }
+
+
+#if 0
 
 extern void read_coil_status(unsigned int address,unsigned int number,unsigned char rtu_mode);
 extern void force_single_coil(unsigned int address,unsigned char onoff);
@@ -212,6 +215,12 @@ prase_again:
 		}
 	}
 }
+
+
+
+#endif
+
+
 
 void modbus_force_multiple_coils(unsigned char * ph,unsigned int len)
 {

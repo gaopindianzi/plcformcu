@@ -288,9 +288,9 @@ void rx_free_useless_packet(unsigned int net_communication_count)
    				    //发现这条指令没人需要，看看是否系统可接受的默认指令
 				    handle_modbus_force_cmd(prx->buffer,prx->index);
 				    prx->finished = 0;
-                    if(THIS_INFO)printf("clear it\r\n");
+                    if(1)printf("clear it\r\n");
 			    } else {
-                    if(THIS_INFO)printf("save it\r\n");
+                    if(1)printf("save it\r\n");
                 }
             } else {
                 //没有通信指令

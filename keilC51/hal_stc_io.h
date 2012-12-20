@@ -5,12 +5,12 @@
 
 
 void sysclk_init(void);
-unsigned long get_sys_clock(void);
+unsigned long get_sys_clock(void) reentrant ;
 void uart1_port_initial(void);
 void send_uart1(unsigned char ch);
 void uart1_send_string(char * pstr);
-void sys_lock(void);
-void sys_unlock(void);
+void sys_lock(void) reentrant ;
+void sys_unlock(void) reentrant ;
 
 void Uart2SendByte(unsigned char ch);
 

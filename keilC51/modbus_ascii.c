@@ -16,13 +16,17 @@
 #include "modbus_ascii.h"
 
 
-unsigned char broadcast;
 
 
-unsigned char rx_buffer[MODBUS_MAX_RX_LEN];
-unsigned char rx_index = 0;
+//unsigned char broadcast;
 
 
+//unsigned char rx_buffer[MODBUS_MAX_RX_LEN];
+//unsigned char rx_index = 0;
+
+
+
+#if 0
 
 
 extern unsigned int CRC16(unsigned char *Array,unsigned int Len);
@@ -389,4 +393,9 @@ prase_again:
 		}
 	}
 }
+
+
+#endif
+
+
 

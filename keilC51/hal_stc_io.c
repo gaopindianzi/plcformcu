@@ -39,10 +39,10 @@ void timer1_interrupt() interrupt 3 using 1
    TH1 = TMR1_RELOAD_H;
    TL1 = TMR1_RELOAD_L;
    system_current_time_tick++;
-   UartReceivetoModbusRtuTimeTick();
+   //UartReceivetoModbusRtuTimeTick();
 }
 
-unsigned long get_sys_clock(void)
+unsigned long get_sys_clock(void) reentrant 
 {
     unsigned long ret;
     sys_lock();
@@ -156,12 +156,12 @@ void uart1_send_string(char * pstr)
 
 unsigned char lock = 0;
 
-void sys_lock(void)
+void sys_lock(void) reentrant 
 {
   EA = 0;
   lock++;
 }
-void sys_unlock(void)
+void sys_unlock(void) reentrant 
 {
   if(lock == 0) {
     EA = 1;
