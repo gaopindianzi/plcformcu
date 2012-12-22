@@ -29,6 +29,9 @@ File 1,1,<.\plc_serial_modbus.c><plc_serial_modbus.c> 0x0
 File 1,5,<.\plc_serial_modbus.h><plc_serial_modbus.h> 0x0 
 File 1,1,<.\serial_comm_packeter.c><serial_comm_packeter.c> 0x0 
 File 1,5,<.\serial_comm_packeter.h><serial_comm_packeter.h> 0x0 
+File 1,5,<.\bin_command_def.h><bin_command_def.h> 0x0 
+File 1,1,<.\bin_command_handle.c><bin_command_handle.c> 0x0 
+File 1,5,<.\bin_command_handle.h><bin_command_handle.h> 0x0 
 
 
 Options 1,0,0  // Target 'Target 1'

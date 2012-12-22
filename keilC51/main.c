@@ -67,7 +67,7 @@ sbit P13 = P1^3;
     unsigned char timeout_val;
 */
 
-
+/*
 code unsigned char plc_test_buffer[128] = 
 {
     2, //一个通信接口
@@ -97,33 +97,18 @@ code unsigned char plc_test_buffer[128] =
 
 	PLC_END,
 };
+*/
 
 
-/*
+
 code unsigned char plc_test_buffer[128] = 
 {
     0, //一个通信接口
-//    PLC_LD, 0x00,0x00,
-  //  PLC_ANI, 0x08,0x00,
-
-    PLC_LDI, 0x08,0x00,
-    PLC_OUTT,0x08,0x00,0x00,10,
-
-    PLC_LDP, 0x08,0x00,
-    PLC_SEI, 0x01,0x00,
-
-    PLC_LD , 0x00,0x00,
-    PLC_SEI, 0x01,0x00,
-    PLC_OUT, 0x01,0x01,
-    PLC_OUT, 0x01,0x02,
-    PLC_OUT, 0x01,0x03,
-    PLC_OUT, 0x01,0x04,
-    PLC_OUT, 0x01,0x05,
-    PLC_OUT, 0x01,0x06,
-    PLC_OUT, 0x01,0x07,
+    PLC_LD, 0x00,0x00,
+    PLC_OUT,0x01,0x07,
 	PLC_END
 };
-*/
+
 
 
 

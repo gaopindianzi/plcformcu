@@ -16,9 +16,11 @@
 #include "modbus_ascii.h"
 #include "compiler.h"
 #include "serial_comm_packeter.h"
+#include "bin_command_def.h"
+#include "bin_command_handle.h"
 
-#define  THIS_INFO  0
-#define  THIS_ERROR 0
+#define  THIS_INFO  1
+#define  THIS_ERROR 1
 
 
 unsigned int CRC16(unsigned char *Array,unsigned int Len)
@@ -225,13 +227,16 @@ prase_again:
 
 
 
-void modbus_force_multiple_coils(unsigned char * ph,unsigned int len)
+void modbus_force_multiple_coils(unsigned char * buffer,unsigned int len)
 {
     unsigned int i;
-	mb_force_mulcoils_req_t * pm = (mb_force_mulcoils_req_t *)ph;
-	unsigned int crc = HSB_BYTES_TO_WORD(&ph[len - 2]);
+    unsigned int crc;
+    APP_PACK_HEAD_T * papph = (APP_PACK_HEAD_T *)buffer;
+	mb_force_mulcoils_req_t * pm = (mb_force_mulcoils_req_t *)&buffer[sizeof(APP_PACK_HEAD_T)];
+    unsigned int md_len = len - sizeof(APP_PACK_HEAD_T);
+	crc = HSB_BYTES_TO_WORD(&(((char *)pm)[md_len - 2]));
     if(THIS_INFO)printf("+modbus_force_multiple_coils\r\n");
-	if(crc != CRC16(ph,len-2)) {
+	if(crc != CRC16((char*)pm,md_len-2)) {
 		if(THIS_INFO)printf("++CRC ERROR\r\n");
 		//return ;
 	}
@@ -240,7 +245,7 @@ void modbus_force_multiple_coils(unsigned char * ph,unsigned int len)
         //字节数跟比特数符合长度规则
         if(THIS_INFO)printf("+byte_count ok\r\n");
 		i = GET_OFFSET_MEM_OF_STRUCT(mb_force_mulcoils_req_t,force_data_base);
-        if(pm->byte_count == (len - i - 2)) {
+        if(pm->byte_count == (md_len - i - 2)) {
 			//总长度减去头，减去CRC，也刚好等于规定字节的长度
 			//那么这个指令时正确的
 			unsigned int i;
@@ -250,11 +255,11 @@ void modbus_force_multiple_coils(unsigned char * ph,unsigned int len)
 			}
 			//然后返回应答
 			{
-				struct modbus_force_multiple_coils_ack_type * pack = (struct modbus_force_multiple_coils_ack_type *)ph;
-				crc = CRC16(ph,sizeof(struct modbus_force_multiple_coils_ack_type) - 2);
+				struct modbus_force_multiple_coils_ack_type * pack = (struct modbus_force_multiple_coils_ack_type *)pm;
+				crc = CRC16((char*)pm,sizeof(struct modbus_force_multiple_coils_ack_type) - 2);
 				pack->crc_hi = crc >> 8;
 				pack->crc_lo = crc & 0xFF;
-                tx_pack_and_send((unsigned char *)pack,sizeof(struct modbus_force_multiple_coils_ack_type));
+                tx_pack_and_send((unsigned char *)buffer,sizeof(struct modbus_force_multiple_coils_ack_type)+sizeof(APP_PACK_HEAD_T));
 			}
 		} else {
 			if(THIS_ERROR)printf("ERROR@: pm->byte_count == (len - i - 2)!\r\n");
@@ -266,21 +271,82 @@ void modbus_force_multiple_coils(unsigned char * ph,unsigned int len)
 }
 
 
+/***************************************
+ * 根据协议，这里处理PLC里面没用到的指令，
+ * 包括2000端口号发出来的指令，前面两个字节即是端口号，第三字节代表其他含义
+ * 上层应用发过来的不同应用，利用前面三字节区分出来，然后读处理，然后再发回去，
+ * 上层应用也根据这三自己区分不同的应用，然后处理它自己的应答
+ */
+
 void handle_modbus_force_cmd(unsigned char * buffer,unsigned int len)
 {
-	modbus_head_t * ph = (modbus_head_t *)buffer;
-	if(ph->slave_addr != sys_info.modbus_addr) {
-		//不是这个设备
-		if(THIS_INFO)printf("handle modbus: not this device(0x%x)!\r\n",ph->slave_addr);
-		return ;
-	}
+    unsigned int port_num;
+    APP_PACK_HEAD_T * papph = (APP_PACK_HEAD_T *)buffer;
+    if(len < sizeof(APP_PACK_HEAD_T)) {
+        //长度错误，免谈
+        return ;
+    }
 	//是这个设备
-	switch(ph->function) {
-		case FUNC_FORCE_MULTIPLE_COILS:
-			modbus_force_multiple_coils(buffer,len);
-			break;
-		default:
-			break;
-	}
+    port_num = HSB_BYTES_TO_WORD(&papph->port_num_hi);
+    if(port_num == 502) {
+	    modbus_head_t * ph = (modbus_head_t *)&buffer[sizeof(APP_PACK_HEAD_T)];  //后面几个字节才是modbus应用
+        unsigned int mb_len = len - sizeof(APP_PACK_HEAD_T);
+        if(mb_len < sizeof(modbus_head_t)) {
+            if(THIS_ERROR)printf("modbus protocal modbus head error!\r\n");
+            return ;
+        }
+	    if(ph->slave_addr != sys_info.modbus_addr) {
+	 	   //不是这个设备
+		    if(THIS_ERROR)printf("handle modbus: not this device(0x%x)!\r\n",ph->slave_addr);
+		    return ;
+	    }
+        dumpdata((char*)ph,len-3);
+	    switch(ph->function) {
+		    case FUNC_FORCE_MULTIPLE_COILS:
+			    modbus_force_multiple_coils(buffer,len);
+			    break;
+		    default:
+                //如果却是没有人需要，最好也上报一下，对上层领导报告，下层没有办法处理，不支持该指令!
+                //502端口号的错误报告，须查看modbus协议
+                {
+                    APP_PACK_ERROR_T * perr = (APP_PACK_ERROR_T *)buffer;
+                    perr->error_hi = NOT_SUPPORT_THIS_COMMAND >> 8; //
+                    perr->error_lo = NOT_SUPPORT_THIS_COMMAND & 0xFF;
+                    tx_pack_and_send(buffer,sizeof(APP_PACK_ERROR_T));
+                }
+			    break;
+	    }
+    } else if(port_num == 2000) {
+        CmdHead * pch = (CmdHead *)&buffer[sizeof(APP_PACK_HEAD_T)];
+        if(len < sizeof(APP_PACK_HEAD_T) + sizeof(CmdHead)) {
+            //长度错误
+            if(THIS_ERROR)printf("bin cmd head len error!\r\n");
+            return ;
+        }
+        switch(pch->cmd)
+        {
+	    case CMD_READ_REGISTER:     CmdReadRegister(buffer,len);     break;
+    	case CMD_WRITE_REGISTER:    CmdWriteRegister(buffer,len);    break;
+	    case CMD_GET_IO_OUT_VALUE:  CmdGetIoOutValue(buffer,len);    break;
+    	case CMD_SET_IO_OUT_VALUE:  CmdSetIoOutValue(buffer,len);    break;
+	    case CMD_REV_IO_SOME_BIT:   CmdRevertIoOutIndex(buffer,len); break;
+    	case CMD_SET_IO_ONE_BIT:    CmdSetClrVerIoOutOneBit(buffer,len,0);    break;
+	    case CMD_CLR_IO_ONE_BIT:    CmdSetClrVerIoOutOneBit(buffer,len,1);    break;
+    	case CMD_REV_IO_ONE_BIT:    CmdSetClrVerIoOutOneBit(buffer,len,2);    break;
+	    case CMD_GET_IO_IN_VALUE:   CmdGetIoInValue(buffer,len);     break;
+    	case CMD_SET_IO_OUT_POWERDOWN_HOLD:  CmdSetIoOutPownDownHold(buffer,len);  break;
+	    case CMD_GET_IO_OUT_POWERDOWN_HOLD:  CmdGetIoOutPownDownHold(buffer,len);  break;
+        default:
+            {
+                //上报，这个指令没法处理
+                pch->cmd_option = 0x00;
+                pch->cmd_len    = 0;
+                tx_pack_and_send(buffer,sizeof(APP_PACK_HEAD_T)+sizeof(CmdHead));
+            }
+            break;
+        }
+    } else {
+        //这个端口没有人处理，那么，上位机肯定也是发错了。
+    }
 }
 

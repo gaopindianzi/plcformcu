@@ -4,6 +4,13 @@
 typedef unsigned char BYTE;
 typedef unsigned int  WORD;
 typedef unsigned long DWORD;
+typedef   BYTE   uint8_t;
+typedef   WORD   uint16_t;
+typedef   DWORD  uint32_t;
+typedef   BYTE   u8_t;
+typedef   WORD   u16_t;
+typedef   DWORD  u32_t;
+
 
 #define GET_OFFSET_MEM_OF_STRUCT(type,member)   (&(((type *)0)->member) - ((type *)0))
 #define GET_ARRRYS_NUM(type)                    (sizeof(type)/sizeof((&type)[0]))

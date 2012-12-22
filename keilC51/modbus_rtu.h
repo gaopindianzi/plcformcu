@@ -16,6 +16,7 @@ struct modbus_crc_type
   unsigned char crc_lo;
 };
 
+
 typedef struct _modbus_head_t
 {
   unsigned char slave_addr;

@@ -2,9 +2,30 @@
 #define __SERIAL_COMM_PACKER_H__
 
 
-#define  PACK_MAX_RX_SIZE   32
+
+#define  PACK_MAX_RX_SIZE   64
 #define  RX_PACKS_MAX_NUM   2
 #define  TX_PACKS_MAX_NUM   1
+
+
+typedef struct _APP_PACK_HEAD_T
+{
+  unsigned char port_num_hi;
+  unsigned char port_num_lo;
+  unsigned char app_id;
+} APP_PACK_HEAD_T;
+
+
+typedef struct _APP_PACK_ERROR_T
+{
+  unsigned char port_num_hi;
+  unsigned char port_num_lo;
+  unsigned char app_id;
+  unsigned char error_hi;
+  unsigned char error_lo;
+} APP_PACK_ERROR_T;
+
+#define  NOT_SUPPORT_THIS_COMMAND    0x0001
 
 
 typedef struct _DATA_RX_PACKET_T
@@ -52,5 +73,6 @@ extern unsigned int tx_pack_and_send(unsigned char * src,unsigned int len);
 extern void serial_rx_tx_initialize(void);
 extern unsigned int modbus_prase_read_multi_coils_ack(unsigned char slave_device,unsigned char * rx_buffer,unsigned int len,unsigned int startbit,unsigned int count);
 extern unsigned char modbus_read_multi_coils_request(unsigned int start_coils,unsigned int coils_num,unsigned char slave_device);
+extern void dumpdata(unsigned char * buf,unsigned int len);
 
 #endif

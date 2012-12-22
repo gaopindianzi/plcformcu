@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define  THIS_INFO    0
-#define  THIS_ERROR   0
+#define  THIS_INFO    1
+#define  THIS_ERROR   1
 
 
 #include "STC12C5A60S2.h"

@@ -8,7 +8,7 @@
 #include <stdio.h>
 
 #define  THIS_INFO    0
-#define  THIS_ERROR   0
+#define  THIS_ERROR   1
 
 
 #include "hal_io.h"
@@ -211,27 +211,51 @@ void handle_plc_command_error(void)
 	plc_cpu_stop = 1;
 }
 
-static unsigned char get_bitval(unsigned int index)
+unsigned char get_bitval(unsigned int index)
 {
 	unsigned char idata bitval = 0;
 	if(index >= IO_INPUT_BASE && index < (IO_INPUT_BASE+IO_INPUT_COUNT)) {
 		index -= IO_INPUT_BASE;
-		bitval = BIT_IS_SET(inputs_new,index);
+        if(index < IO_INPUT_COUNT) {
+		    bitval = BIT_IS_SET(inputs_new,index);
+        } else {
+            bitval = 0;
+        }
 	} else if(index >= IO_OUTPUT_BASE && index < (IO_OUTPUT_BASE+IO_OUTPUT_COUNT)) {
 		index -= IO_OUTPUT_BASE;
-		bitval = BIT_IS_SET(output_new,index);
+        if(index < IO_OUTPUT_COUNT) {
+		    bitval = BIT_IS_SET(output_new,index);
+        } else {
+            bitval = 0;
+        }
 	} else if(index >= AUXI_RELAY_BASE && index < (AUXI_RELAY_BASE + AUXI_RELAY_COUNT)) {
 		index -= AUXI_RELAY_BASE;
-		bitval = BIT_IS_SET(auxi_relays,index);
+        if(index < AUXI_RELAY_COUNT) {
+	    	bitval = BIT_IS_SET(auxi_relays,index);
+        } else {
+            bitval = 0;
+        }
 	} else if(index >= TIMING100MS_EVENT_BASE && index < (TIMING100MS_EVENT_BASE+TIMING100MS_EVENT_COUNT)) {
 		index -= TIMING100MS_EVENT_BASE;
-		bitval = BIT_IS_SET(tim100ms_arrys.event_bits,index);
+        if(index < TIMING100MS_EVENT_COUNT) {
+		    bitval = BIT_IS_SET(tim100ms_arrys.event_bits,index);
+        } else {
+            bitval = 0;
+        }
 	} else if(index >= TIMING1S_EVENT_BASE && index < (TIMING1S_EVENT_BASE + TIMING1S_EVENT_COUNT)) {
 		index -= TIMING1S_EVENT_BASE;
-		bitval = BIT_IS_SET(tim1s_arrys.event_bits,index);
+        if(index < TIMING1S_EVENT_COUNT) {
+		    bitval = BIT_IS_SET(tim1s_arrys.event_bits,index);
+        } else {
+            bitval = 0;
+        }
 	} else if(index >= COUNTER_EVENT_BASE && index < (COUNTER_EVENT_BASE+COUNTER_EVENT_COUNT)) {
 	    index -= COUNTER_EVENT_BASE;
-	    bitval = BIT_IS_SET(counter_arrys.event_bits,index);
+        if(index < COUNTER_EVENT_COUNT) {
+	        bitval = BIT_IS_SET(counter_arrys.event_bits,index);
+        } else {
+            bitval = 0;
+        }
 	} else {
 	    if(THIS_ERROR)printf("get bit index error:%d\r\n",index);
 		handle_plc_command_error();
@@ -243,22 +267,46 @@ static unsigned char get_last_bitval(unsigned int index)
 	unsigned char idata bitval = TIMING100MS_EVENT_BASE;
 	if(index >= IO_INPUT_BASE && index < (IO_INPUT_BASE+IO_INPUT_COUNT)) {
 		index -= IO_INPUT_BASE;
-		bitval = BIT_IS_SET(inputs_last,index);
+        if(index < IO_INPUT_COUNT) {
+		    bitval = BIT_IS_SET(inputs_last,index);
+        } else {
+            bitval = 0;
+        }
 	} else if(index >= IO_OUTPUT_BASE && index < (IO_OUTPUT_BASE+IO_OUTPUT_COUNT)) {
 		index -= IO_OUTPUT_BASE;
-		bitval = BIT_IS_SET(output_last,index);
+        if(index < IO_OUTPUT_COUNT) {
+		    bitval = BIT_IS_SET(output_last,index);
+        } else {
+            bitval = 0;
+        }
 	} else if(index >= AUXI_RELAY_BASE && index < (AUXI_RELAY_BASE + AUXI_RELAY_COUNT)) {
 		index -= AUXI_RELAY_BASE;
-		bitval = BIT_IS_SET(auxi_relays_last,index);
+        if(index < AUXI_RELAY_COUNT) {
+	    	bitval = BIT_IS_SET(auxi_relays_last,index);
+        } else {
+            bitval = 0;
+        }
 	} else if(index >= TIMING100MS_EVENT_BASE && index < (TIMING100MS_EVENT_BASE+TIMING100MS_EVENT_COUNT)) {
 		index -= TIMING100MS_EVENT_BASE;
-		bitval = BIT_IS_SET(tim100ms_arrys.event_bits_last,index);
+        if(index < TIMING100MS_EVENT_COUNT) {
+		    bitval = BIT_IS_SET(tim100ms_arrys.event_bits_last,index);
+        } else {
+            bitval = 0;
+        }
 	} else if(index >= TIMING1S_EVENT_BASE && index < (TIMING1S_EVENT_BASE + TIMING1S_EVENT_COUNT)) {
 		index -= TIMING1S_EVENT_BASE;
-		bitval = BIT_IS_SET(tim1s_arrys.event_bits_last,index);
+        if(index < TIMING1S_EVENT_COUNT) {
+		    bitval = BIT_IS_SET(tim1s_arrys.event_bits_last,index);
+        } else {
+            bitval = 0;
+        }
 	} else if(index >= COUNTER_EVENT_BASE && index < (COUNTER_EVENT_BASE+COUNTER_EVENT_COUNT)) {
 	    index -= COUNTER_EVENT_BASE;
-	    bitval = BIT_IS_SET(counter_arrys.event_bits_last,index);
+        if(index < COUNTER_EVENT_COUNT) {
+	        bitval = BIT_IS_SET(counter_arrys.event_bits_last,index);
+        } else {
+            bitval = 0;
+        }
 	} else {
 	    if(THIS_ERROR)printf("get bit index error:%d\r\n",index);
 		handle_plc_command_error();
@@ -272,16 +320,22 @@ void set_bitval(unsigned int index,unsigned char bitval)
 		//输入值不能修改
 	} else if(index >= IO_OUTPUT_BASE && index < (IO_OUTPUT_BASE+IO_OUTPUT_COUNT)) {
 		index -= IO_OUTPUT_BASE;
-		SET_BIT(output_new,index,bitval);
+        if(index < IO_OUTPUT_COUNT) {
+		    SET_BIT(output_new,index,bitval);
+        }
 	} else if(index >= AUXI_RELAY_BASE && index < (AUXI_RELAY_BASE + AUXI_RELAY_COUNT)) {
 		index -= AUXI_RELAY_BASE;
-		SET_BIT(auxi_relays,index,bitval);
+        if(index < AUXI_RELAY_COUNT) {
+		    SET_BIT(auxi_relays,index,bitval);
+        }
 	} else if(index >= COUNTER_EVENT_BASE && index < (COUNTER_EVENT_BASE+COUNTER_EVENT_COUNT)) {
 	    //计数器的值不可以置位,只可以复位
 		if(!bitval) {
 		    index -= COUNTER_EVENT_BASE;
-		    counter_arrys.counter[index] = 0;
-			SET_BIT(counter_arrys.event_bits,index,0);
+            if(index < COUNTER_EVENT_COUNT) {
+		        counter_arrys.counter[index] = 0;
+    			SET_BIT(counter_arrys.event_bits,index,0);
+            }
 		}
 	} else {
 	    if(THIS_ERROR)printf("set bit index error:%d\r\n",index);
