@@ -62,8 +62,8 @@ void sysclk_init(void)
 void uart1_port_initial(void)
 {
     SCON = 0x50;
-	BRT  = 0xBF; //20MHz晶振、9600
-	//BRT  = 0xFB; //20MHz晶振、125000
+	//BRT  = 0xBF; //20MHz晶振、9600
+	BRT  = 0xFB; //20MHz晶振、125000
 	AUXR |= 0x15;  //1T模式,允许BRT发生,UART1使用BRT
 	ES = 1;
 	//
@@ -92,18 +92,39 @@ void send_uart1(unsigned char ch)
 
 
 unsigned char rx_int_buffer[32];
-unsigned int  rx_int_count = 0;
+unsigned char rx_push_index = 1;
+unsigned char rx_pop_index = 0;
 
 void uart1_initerrupt_receive(void) interrupt 4 using 2
 {
+  unsigned char len;
   unsigned char k = 0;
   if(RI == 1) 
   {
       RI = 0;
 	  k = SBUF;
+      sys_lock();
+      len = ((rx_push_index+1)>=sizeof(rx_int_buffer))?0:rx_push_index;
+      if(len != rx_pop_index) { //预先知道没有重合
+          if(rx_push_index > rx_pop_index) {
+              len = rx_push_index - rx_pop_index;
+          } else {
+              len = rx_push_index + sizeof(rx_int_buffer) - rx_pop_index;
+          }
+          len = sizeof(rx_int_buffer) - len;
+          if(len > 1) {
+              rx_int_buffer[rx_push_index++] = k;
+              if(rx_push_index >= sizeof(rx_int_buffer)) {
+                  rx_push_index = 0;
+              }
+          }
+      }
+      sys_unlock();
+/*
       if(rx_int_count < sizeof(rx_int_buffer)) {
           rx_int_buffer[rx_int_count++] = k;
       }
+*/
   }
   else 
   {
@@ -115,13 +136,38 @@ void uart1_initerrupt_receive(void) interrupt 4 using 2
 //这个函数只能在主程序中调用，在串口中调用会出问题
 void uart1_rx_buffer_process(void)
 {
-   unsigned char i;
-   sys_lock();
-   for(i=0;i<rx_int_count;i++) {
-       pack_prase_in(rx_int_buffer[i]);
-   }
-   rx_int_count = 0;
-   sys_unlock();
+    unsigned char len;
+    sys_lock();
+    len = rx_push_index;
+    sys_unlock();
+    if(len != rx_pop_index) {
+        if(len >= rx_pop_index) {
+            len = len - rx_pop_index;
+        } else {
+            len = len + sizeof(rx_int_buffer) - rx_pop_index;
+        }
+        len -= 1;
+        if(len > 0) {
+            unsigned char i;
+            for(i=0;i<len;i++) {
+                sys_lock();
+                if(++rx_pop_index >= sizeof(rx_int_buffer)) {
+                    rx_pop_index = 0;
+                }
+                sys_unlock();
+                pack_prase_in(rx_int_buffer[rx_pop_index]);
+            }
+        }
+    }
+
+
+  // unsigned char i;
+  // sys_lock();
+   //for(i=0;i<rx_int_count;i++) {
+   //    pack_prase_in(rx_int_buffer[i]);
+   //}
+  // rx_int_count = 0;
+  // sys_unlock();
 }
 
 

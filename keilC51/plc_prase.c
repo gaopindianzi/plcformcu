@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define  THIS_INFO    0
+#define  THIS_INFO    1
 #define  THIS_ERROR   1
 
 
