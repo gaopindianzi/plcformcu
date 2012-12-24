@@ -146,6 +146,7 @@ void main(void)
 	  }
   }
   uart1_send_string("sys start ......\r\n");
+  uart1_send_str_hex("output hex = ",2000);
 #endif
 
   io_out_set_bits(0,&reg,8);

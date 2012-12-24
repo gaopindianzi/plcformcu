@@ -62,8 +62,8 @@ void sysclk_init(void)
 void uart1_port_initial(void)
 {
     SCON = 0x50;
-	//BRT  = 0xBF; //20MHz晶振、9600
-	BRT  = 0xFB; //20MHz晶振、125000
+	BRT  = 0xBF; //20MHz晶振、9600
+	//BRT  = 0xFB; //20MHz晶振、125000
 	AUXR |= 0x15;  //1T模式,允许BRT发生,UART1使用BRT
 	ES = 1;
 	//
@@ -224,6 +224,19 @@ void uart1_send_data(unsigned char * pbuf,unsigned int len)
 	}
 }
 
+
+void uart1_send_str_hex(char * pstr,unsigned int hex)
+{
+    unsigned char reg = hex >> 8;
+    uart1_send_string(pstr);
+    send_uart1(':');
+    send_uart1(((reg>>4)>=10)?((reg>>4)-10+'A'):((reg>>4)+'0'));
+    send_uart1(((reg&0xF)>=10)?((reg&0xF)-10+'A'):((reg&0xF)+'0'));
+    reg = hex & 0xFF;
+    send_uart1(((reg>>4)>=10)?((reg>>4)-10+'A'):((reg>>4)+'0'));
+    send_uart1(((reg&0xF)>=10)?((reg&0xF)-10+'A'):((reg&0xF)+'0'));
+    uart1_send_string("\r\n");
+}
 
 volatile unsigned long lock = 0;
 

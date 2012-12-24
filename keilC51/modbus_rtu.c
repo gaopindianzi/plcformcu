@@ -297,7 +297,7 @@ void handle_modbus_force_cmd(unsigned char * buffer,unsigned int len)
         }
 	    if(ph->slave_addr != sys_info.modbus_addr) {
 	 	   //不是这个设备
-		    if(THIS_ERROR)printf("handle modbus: not this device(0x%x)!\r\n",ph->slave_addr);
+		    if(THIS_ERROR)uart1_send_str_hex("handle modbus: not this device",ph->slave_addr);
 		    return ;
 	    }
         dumpdata((char*)ph,len-3);
@@ -320,7 +320,7 @@ void handle_modbus_force_cmd(unsigned char * buffer,unsigned int len)
         CmdHead * pch = (CmdHead *)&buffer[sizeof(APP_PACK_HEAD_T)];
         if(len < sizeof(APP_PACK_HEAD_T) + sizeof(CmdHead)) {
             //长度错误
-            if(THIS_ERROR)printf("bin cmd head len error!\r\n");
+            if(THIS_ERROR)uart1_send_str_hex("bin len error",len);
             return ;
         }
         switch(pch->cmd)

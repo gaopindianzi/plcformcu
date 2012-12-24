@@ -14,7 +14,7 @@ void   CmdReadRegister(unsigned char * buffer,unsigned int len)
 {
     APP_PACK_HEAD_T * papph = (APP_PACK_HEAD_T *)buffer;
     CmdHead * pcmd = (CmdHead *)&buffer[sizeof(APP_PACK_HEAD_T)];
-    if(len < sizeof(APP_PACK_HEAD_T) + sizeof(CmdHead) + sizeof(CmdRegisterHead)) {
+    if(1) { //len < sizeof(APP_PACK_HEAD_T) + sizeof(CmdHead) + sizeof(CmdRegisterHead)) {
         goto len_error;
     }
 len_error:
@@ -33,7 +33,7 @@ void   CmdWriteRegister(unsigned char * buffer,unsigned int len)
 {
     APP_PACK_HEAD_T * papph = (APP_PACK_HEAD_T *)buffer;
     CmdHead * pcmd = (CmdHead *)&buffer[sizeof(APP_PACK_HEAD_T)];
-    if(len < sizeof(APP_PACK_HEAD_T) + sizeof(CmdHead) + sizeof(CmdRegisterHead)) {
+    if(1) { //len < sizeof(APP_PACK_HEAD_T) + sizeof(CmdHead) + sizeof(CmdRegisterHead)) {
         goto len_error;
     }
 len_error:
@@ -136,7 +136,6 @@ len_error:
 
 void   CmdRevertIoOutIndex(unsigned char * buffer,unsigned int len)
 {
-    APP_PACK_HEAD_T * papph = (APP_PACK_HEAD_T *)buffer;
     CmdHead * pcmd = (CmdHead *)&buffer[sizeof(APP_PACK_HEAD_T)];
     CmdIobitmap * rio = (CmdIobitmap *)GET_CMD_DATA(pcmd);
     if(THISINFO)printf("+CmdRevertIoOutIndex\r\n");
@@ -147,7 +146,7 @@ void   CmdRevertIoOutIndex(unsigned char * buffer,unsigned int len)
     {
       unsigned int i;
       for(i=0;i<IO_OUTPUT_COUNT;i++) {
-          if(BIT_IS_SET(&rio->io_msk,i)) {
+          if(BIT_IS_SET(rio->io_msk,i)) {
               unsigned char bitval = get_bitval(IO_OUTPUT_BASE+i);
 		      set_bitval(IO_OUTPUT_BASE+i,!bitval);
           }
@@ -156,15 +155,15 @@ void   CmdRevertIoOutIndex(unsigned char * buffer,unsigned int len)
     //输出
     {
         unsigned int i;
-        CmdIoValue * tio = (CmdIoValue *)GET_CMD_DATA(pcmd);
-        memset(&tio->io_value,0,sizeof(tio->io_value));
-        tio->io_count = IO_OUTPUT_COUNT;
-    	for(i=0;i<tio->io_count;i++) { //协议支持最大输出
+        CmdIobitmap * tio = (CmdIobitmap *)GET_CMD_DATA(pcmd);
+        memset(tio,0,sizeof(CmdIobitmap));
+    	for(i=0;i<IO_OUTPUT_COUNT;i++) { //协议支持最大输出
             unsigned char bitval = get_bitval(IO_OUTPUT_BASE+i);
-            SET_BIT(&(tio->io_value),i,bitval);
+            SET_BIT(tio->io_msk,i,bitval);
 		}
+        //pcmd->cmd_len    = sizeof(CmdIobitmap);
         pcmd->cmd_option = 0x01;
-        tx_pack_and_send(buffer,sizeof(APP_PACK_HEAD_T)+sizeof(CmdHead)+sizeof(CmdIoValue));
+        tx_pack_and_send(buffer,sizeof(APP_PACK_HEAD_T)+sizeof(CmdHead)+sizeof(CmdIobitmap));
         if(THISINFO)printf("+CmdRevertIoOutIndex ok\r\n");
         return ;
     }
@@ -186,7 +185,7 @@ void   CmdSetClrVerIoOutOneBit(unsigned char * buffer,unsigned int len,unsigned 
     APP_PACK_HEAD_T * papph = (APP_PACK_HEAD_T *)buffer;
     CmdHead * pcmd = (CmdHead *)&buffer[sizeof(APP_PACK_HEAD_T)];
     mode = mode;
-    if(len < sizeof(APP_PACK_HEAD_T) + sizeof(CmdHead) + sizeof(CmdRegisterHead)) {
+    if(1) { //len < sizeof(APP_PACK_HEAD_T) + sizeof(CmdHead) + sizeof(CmdRegisterHead)) {
         goto len_error;
     }
 len_error:
@@ -239,7 +238,7 @@ void   CmdSetIoOutPownDownHold(unsigned char * buffer,unsigned int len)
 {
     APP_PACK_HEAD_T * papph = (APP_PACK_HEAD_T *)buffer;
     CmdHead * pcmd = (CmdHead *)&buffer[sizeof(APP_PACK_HEAD_T)];
-    if(len < sizeof(APP_PACK_HEAD_T) + sizeof(CmdHead) + sizeof(CmdRegisterHead)) {
+    if(1) { //len < sizeof(APP_PACK_HEAD_T) + sizeof(CmdHead) + sizeof(CmdRegisterHead)) {
         goto len_error;
     }
 len_error:
@@ -257,7 +256,7 @@ void   CmdGetIoOutPownDownHold(unsigned char * buffer,unsigned int len)
 {
     APP_PACK_HEAD_T * papph = (APP_PACK_HEAD_T *)buffer;
     CmdHead * pcmd = (CmdHead *)&buffer[sizeof(APP_PACK_HEAD_T)];
-    if(len < sizeof(APP_PACK_HEAD_T) + sizeof(CmdHead) + sizeof(CmdRegisterHead)) {
+    if(1) { //len < sizeof(APP_PACK_HEAD_T) + sizeof(CmdHead) + sizeof(CmdRegisterHead)) {
         goto len_error;
     }
 len_error:

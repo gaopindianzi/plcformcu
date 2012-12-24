@@ -230,7 +230,7 @@ unsigned int tx_pack_and_send(unsigned char * src,unsigned int len)
 	if(ptx->finished) {
 		//立即发送
         unsigned int i;
-        //if(THIS_INFO)printf("tx_pack_and_send start send:\r\n");
+        if(THIS_INFO)printf("tx_pack_and_send start send:\r\n");
         for(i=0;i<ptx->index;i++) {
             send_uart1(ptx->buffer[i]);
         }
@@ -301,14 +301,15 @@ void rx_free_useless_packet(unsigned int net_communication_count)
    				    //发现这条指令没人需要，看看是否系统可接受的默认指令
 				    handle_modbus_force_cmd(prx->buffer,prx->index);
 				    prx->finished = 0;
-                    if(THIS_INFO)printf("clear it\r\n");
+                    if(THIS_INFO)printf("all people look at it,clear it\r\n");
 			    } else {
-                    if(THIS_INFO)printf("save it\r\n");
+                    if(THIS_INFO)printf("some people no lock,save it\r\n");
                 }
             } else {
                 //没有通信指令
                 handle_modbus_force_cmd(prx->buffer,prx->index);
                 prx->finished = 0;
+                if(THIS_INFO)printf("----no plc look,clear it\r\n");
             }
 		}
 	}
